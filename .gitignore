@@ -3,3 +3,5 @@ __pycache__/
 *$py.class
 .DS_Store
 
+models/sentiment_analysis/sentiment.json
+.gitignore
