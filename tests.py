@@ -70,7 +70,7 @@ def test_source_reputation():
 
 def test_sentiment_analysis():
     print("Testing Sentiment Analysis...")
-    factor = SentimentAnalysis()
+    factor = SentimentAnalysis(API_key)
     print(factor.get_name())
     print(factor.get_description())
     print(factor.probability("This is a clickbait article with sentiment."))
