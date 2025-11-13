@@ -2,8 +2,8 @@ from models.clickbait.clickbait import Clickbait
 from models.headline_body_relation.headline_body_relation import HeadlineBodyRelation
 from models.political_affiliation.political_affiliation import PoliticalAffiliation
 from models.source_reputation.source_reputation import SourceReputation
-from models.sentiment_analysis.sentiment_analysis import SentimentAnalysis
-from models.sesationalism.sensationalism import Sensationalism
+from models.sentiment_analysis.sentiment_analysis import Sentiment
+from models.sensationalism.sensationalism import Sensationalism
 from dotenv import load_dotenv
 import os
 
@@ -63,14 +63,14 @@ def test_political_affiliation():
 
 def test_source_reputation():
     print("Testing Source Reputation...")
-    factor = SourceReputation()
+    factor = SourceReputation(API_key)
     print(factor.get_name())
     print(factor.get_description())
     print(factor.probability("This is a test article source with clickbait."))
 
 def test_sentiment_analysis():
     print("Testing Sentiment Analysis...")
-    factor = SentimentAnalysis(API_key)
+    factor = Sentiment(API_key)
     print(factor.get_name())
     print(factor.get_description())
     print(factor.probability("This is a clickbait article with sentiment."))

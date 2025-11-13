@@ -3,6 +3,7 @@ from typing import Dict
 import xgboost as xgb
 from openai import OpenAI
 import os
+import joblib
 
 class Sentiment(FactualityFactor):
     def __init__(self, API_key: str):
@@ -13,8 +14,24 @@ class Sentiment(FactualityFactor):
         self.API_key = API_key
         self.model = xgb.XGBClassifier()
         model_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(model_dir, "sentiment_model.json")
-        self.model.load_model(model_path)
+        json_path = os.path.join(model_dir, "sentiment.json")
+        gz_path = os.path.join(model_dir, "sentiment_model.gz")
+        
+        json_exists = os.path.exists(json_path)
+        if json_exists:
+            try:
+                self.model = xgb.XGBClassifier()
+                self.model.load_model(json_path)
+            except Exception:
+                os.remove(json_path)
+                json_exists = False
+        
+        if not json_exists:
+            if os.path.exists(gz_path):
+                self.model = joblib.load(gz_path)
+                self.model.save_model(json_path)
+            else:
+                raise FileNotFoundError(f"Neither {json_path} nor {gz_path} found")
 
         # Map class indices to sentiment labels
         self.class_map = {0: "negative", 1: "neutral", 2: "positive"}
@@ -43,5 +60,5 @@ if __name__ == "__main__":
     API_key = os.getenv("OPENROUTER_API_KEY")
 
     sentiment = Sentiment(API_key)
-    print(sentiment.probability("The economy is doing great and people are happy."))
-    print(sentiment.probability("It was a terrible disaster that ruined everything."))
+    print(sentiment.probability("I hate you this is the worst thing ever"))
+    print(sentiment.probability("I love you this is the best thing ever"))
