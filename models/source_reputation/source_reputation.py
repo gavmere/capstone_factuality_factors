@@ -39,5 +39,3 @@ if __name__ == "__main__":
         "to push a conspiracy narrative."
     )
     print(sr.probability(sample_text))
-
-    # python -m models.source_reputation.source_reputation

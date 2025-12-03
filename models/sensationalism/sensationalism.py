@@ -10,6 +10,9 @@ from google import genai
 from google.genai.errors import APIError, ServerError
 
 from models.factuality_factor import FactualityFactor
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class Sensationalism(FactualityFactor):
@@ -31,7 +34,7 @@ class Sensationalism(FactualityFactor):
         )
 
         # --- Gemini setup ---
-        api_key = os.environ.get("GEMINI_API_KEY")
+        api_key = os.environ.get("AI_STUDIO_API_KEY")
         if not api_key:
             raise RuntimeError(
                 "GEMINI_API_KEY environment variable is not set. "

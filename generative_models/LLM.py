@@ -4,7 +4,7 @@ from google.genai import types
 def generate_final_article_content(prompt, article):
     return prompt + f'Title:{article["title"]}\nSource:{article["source"]}\nAuthor:{article["author"]}\nPublication Date:{article["publication_date"]}\nContent:{article["content"]}'
 
-def generate(api_key, system_prompt, prompt, article, model="gemini-2.0-flash"):
+def generate(api_key, system_prompt, prompt, article, model="gemini-2.5-pro"):
     result = ''
     client = genai.Client(
         api_key=api_key,
@@ -80,10 +80,33 @@ if __name__ == "__main__":
 
     Each Factor will be scored as such:
 
-    Clickbait: a score from 0 to 1 where 0 is not clickbait and 1 is very clickbait. CLickbait could be described as a headline that is overly dramatic or sensational or uses emotional language to entice the reader to click on the article.
-    An example of clickbait is "You won't believe what happened next!" or "This is the most shocking thing you'll ever read!" not clickbait would be something like "The latest news on the stock market" or "The weather in New York City today"
+    - ClickBait:
+    - Evaluate the disparity between sensational promises made in headlines and the actual information delivered in the content.
+    - Measure the density of emotionally charged, hyperbolic, or curiosity-gap keywords (e.g., "shocking," "you won't believe") in titles.
+    - Identify formatting patterns designed specifically to maximize click-through rates rather than inform, such as misleading thumbnails or all-caps headers.
+    Questions you should ask yourself is: **Is this text clickbait? Is this so sensational that it is trying to get
+    you to click on it, or pull your attention to it via a headline or text
+    segment that is angering, fear inspiring or extremely
+    controversial?
+    For Example:
+    Headline: "You won't believe what happened next!"
+    Body: "You won't believe what happened next!"
+    Score: .85
+
+    Headline: "This is the most shocking thing you'll ever read!"
+    Body: "This is the most shocking thing you'll ever read!"
+    Score: .9
+
+    Headline: "The latest news on the stock market"
+    Body: "The latest news on the stock market"
+    Score: 0
+
+    Headline: "The weather in New York City today"
+    Body: "The weather in New York City today"
+    Score: 0
 
     Headline-Body-Relation: a score from 0 to 1 where 0 is no relation and 1 is a very strong relation. The headline should be a direct summary of the article.
+    Questions you should ask yourself is: **Does the title , agree, discuss, is unrelated to, or negate the body**"
     For Example: 
     Headline: "Trump's new policy will make America great again!"
     Body: "Trump's new policy will make America great again!"
@@ -93,7 +116,11 @@ if __name__ == "__main__":
     Body: "The new most popular dog toy is the squeaky ball!"
     Score: 0
 
+
     Party Affliation: Democrat, Republican, or Other - This is based on the content of the article weather the writing is leaning towards a certain party.
+    Questions you should ask yourself is: **Measure the differential framing of similar actions when committed by opposing political figures to detect double standards.
+    Analyze sentiment scores associated with varying political entities to detect consistent favoritism or hostility regardless of the specific news.
+    Check for systematic underreporting of negative news related to favored political groups and simultaneous overreporting for opponents.**
     For Example:
     Headline: "The stock market is crashing!"
     Body: "The new most popular dog toy is the squeaky ball!"
@@ -107,19 +134,32 @@ if __name__ == "__main__":
     Body: "I believe in Donald Trump for President 2028"
     Score: Republican
 
+
     Sensationalism: Sensational, or Non-Sensational - This is based on the content of the article and the language used. Sensationalism could be described as the use of emotional language to entice the reader to read the article.
+    Questions you should ask yourself is: **Quantify the use of "click-words" and superlatives (e.g., "unprecedented," "catastrophic," "miracle") in non-extraordinary reporting contexts.
+    Compare the emotional intensity of the headline against the actual evidential weight provided in the body text to detect hype.
+    Identify reliance on shocking, isolated anecdotal evidence to make broad generalizations where statistical data would be more appropriate.**
     For Example:
     Headline: "The stock market is crashing!"
     Body: "The stock market is crashing and you should sell your stocks immediately! Your family will starve if you don't!"
     Score: Sensational
 
     Sentiment Analysis: Positive, Negative - This is based on the overall sentiment of the article. A positive sentiment is when an article is more positive or uplifting in nature. A negative sentiment is when an article is more negative or somber in nature.
+    Questions you should ask yourself is: **Utilize NLP to score overall text polarity (positive/negative/neutral) and intensity to detect emotionally manipulative framing.
+    Identify sudden, unjustified shifts in sentiment trajectory within a text that may indicate a pivot from reporting to editorializing.
+    Compare the sentiment of the content against the neutral baseline expected for the specific topic or event type.**
     For Example:
     Headline: "The stock market is crashing!"
     Body: "The stock market is crashing and you should sell your stocks immediately! Your family will starve if you don't!"
     Score: Negative
 
     Source Reputation: Credible, Non-Credible, or Caution - This is based on the reputation of the source and the credibility of the information. If the source is a known fake news source, then the source reputation should be Non-Credible. If the source is a known reliable source, then the source reputation should be Credible. If the source is a known mixed source, then the source reputation should be Caution.
+    Questions you should ask yourself is: **Review accepted media bias charts or fact-checking indices to see the established
+    historical rating and lean of the source.
+    Investigate if the source has won recognized awards for investigative journalism or
+    content quality in its specific domain.
+    Evaluate the transparency of ownership structures, funding sources, and editorial
+    boards to detect potential conflicts of interest.**
     Source: CNN
     Score: Credible
 
