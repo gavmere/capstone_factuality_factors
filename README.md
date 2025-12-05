@@ -13,7 +13,7 @@ So create a venv such as:
 - **Unix/macOS:**
   ```bash
   python3 -m venv [name_of_venv]
-  source venv/bin/activate # To activate the venv
+  source [name_of_venv]/bin/activate # To activate the venv
   ```
 - **Windows:**
   ```bash
