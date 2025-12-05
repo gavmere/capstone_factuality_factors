@@ -18,7 +18,7 @@ So create a venv such as:
 - **Windows:**
   ```bash
   python -m venv [name_of_venv]
-  venv\Scripts\activate # To activate the venv
+  [name_of_venv]\Scripts\activate # To activate the venv
   ```
 
 ### 2. Install Package Dependencies
