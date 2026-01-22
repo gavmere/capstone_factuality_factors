@@ -41,9 +41,9 @@ def generate(api_key, system_prompt, prompt, article, model="gemini-2.5-pro"):
                     type = genai.types.Type.STRING,
                     enum = ["Positive", "Negative", 'Neutral'],
                 ),
-                "Source Reputation": genai.types.Schema(
+                "Toxicity": genai.types.Schema(
                     type = genai.types.Type.STRING,
-                    enum = ["Credible", "Non-Credible", "Caution"],
+                    enum = ["Friendly", "Neutral", "Rude", "Toxic", "Super_Toxic"],
                 ),
             },
         ),
@@ -74,9 +74,9 @@ if __name__ == "__main__":
     }
 
     System_Prompt = """
-    You are a helpful assistant that analyzes news articles and provides scores for the following factors: Clickbait, Headline-Body-Relation, Party Affliation, Sensationalism, Sentiment Analysis, Source Reputation.
+    You are a helpful assistant that analyzes news articles and provides scores for the following factors: Clickbait, Headline-Body-Relation, Party Affliation, Sensationalism, Sentiment Analysis, Toxicity.
 
-    You will be given an article and you will need to analyze it and provide scores for the following factors: Clickbait, Headline-Body-Relation, Party Affliation, Sensationalism, Sentiment Analysis, Source Reputation.
+    You will be given an article and you will need to analyze it and provide scores for the following factors: Clickbait, Headline-Body-Relation, Party Affliation, Sensationalism, Sentiment Analysis, Toxicity.
 
     Each Factor will be scored as such:
 
@@ -153,28 +153,25 @@ if __name__ == "__main__":
     Body: "The stock market is crashing and you should sell your stocks immediately! Your family will starve if you don't!"
     Score: Negative
 
-    Source Reputation: Credible, Non-Credible, or Caution - This is based on the reputation of the source and the credibility of the information. If the source is a known fake news source, then the source reputation should be Non-Credible. If the source is a known reliable source, then the source reputation should be Credible. If the source is a known mixed source, then the source reputation should be Caution.
-    Questions you should ask yourself is: **Review accepted media bias charts or fact-checking indices to see the established
-    historical rating and lean of the source.
-    Investigate if the source has won recognized awards for investigative journalism or
-    content quality in its specific domain.
-    Evaluate the transparency of ownership structures, funding sources, and editorial
-    boards to detect potential conflicts of interest.**
-    Source: CNN
-    Score: Credible
+    Toxicity: Low, Moderate, or High – This is based on the presence and severity of toxic language in the text. If the text contains harassment, hate speech, threats, demeaning language, or aggressive insults, then the toxicity should be High. If the text contains mild, contextual, or indirect toxic language, then the toxicity should be Moderate. If the text is neutral, respectful, or factual with no toxic language, then the toxicity should be Low.
 
-    Source: The Donald Trump News Network
-    Score: Non-Credible
+    Questions you should ask yourself is: Review the language used in the text to identify insults, slurs, profanity, or dehumanizing expressions.
+    Evaluate whether the tone is hostile, threatening, or intended to provoke anger or fear.
+    Determine whether the toxic language is central to the message or incidental (e.g., quoted speech or reporting).
+    Assess whether specific individuals or groups are targeted and the severity of that targeting.
 
-    Source: The New York Times
-    Score: Credible
+    Text: “These people are disgusting parasites ruining everything.”
+    Score: High
 
-    Source: The Onion
-    Score: Non-Credible
+    Text: “That argument is ridiculous and only an idiot would believe it.”
+    Score: Moderate
+
+    Text: “The proposal has generated strong reactions from both supporters and critics.”
+    Score: Low
     """
 
     Prompt = """
-    Analyze the following article and provide scores for the following factors: Clickbait, Headline-Body-Relation, Party Affliation, Sensationalism, Sentiment Analysis, Source Reputation.
+    Analyze the following article and provide scores for the following factors: Clickbait, Headline-Body-Relation, Party Affliation, Sensationalism, Sentiment Analysis, Toxicity.
     """
     result = generate(API_key, System_Prompt, Prompt, ARTICLE, model='gemini-2.5-pro')
     print(result)

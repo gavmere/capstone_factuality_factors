@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 .DS_Store
-
+.env
 models/sentiment_analysis/sentiment.json
 .gitignore
+test/
