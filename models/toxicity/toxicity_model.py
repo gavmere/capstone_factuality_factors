@@ -39,9 +39,4 @@ class ToxicityDetector:
         # Get the class with highest probability
         max_idx = torch.argmax(probs).item()
         predicted_label = self.TOXICITY_LABELS[min(max_idx, len(self.TOXICITY_LABELS) - 1)]
-        
-        return {
-            "probabilities": probabilities,
-            "predicted_level": predicted_label,
-            "confidence": float(probs[max_idx])
-        }
+        return probabilities, predicted_label

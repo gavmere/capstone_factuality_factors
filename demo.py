@@ -9,7 +9,7 @@ from models.headline_body_relation.headline_body_relation import HeadlineBodyRel
 from models.political_affiliation.political_affiliation import PoliticalAffiliation
 from models.sensationalism.sensationalism import Sensationalism
 from models.sentiment_analysis.sentiment_analysis import Sentiment
-from models.source_reputation.source_reputation import SourceReputation
+from models.toxicity.toxicity import Toxicity
 
 load_dotenv()
 
@@ -62,11 +62,11 @@ def initialize_models():
         models["sentiment"] = None
     
     try:
-        models["source_reputation"] = SourceReputation()
+        models["toxicity"] = Toxicity()
     except Exception as e:
-        print(f"Failed to load Source Reputation model: {str(e)}")
-        models["source_reputation"] = None
-    
+        print(f"Failed to load Toxicity model: {str(e)}")
+        models["toxicity"] = None
+
     # Initialize models that need API keys
     if openrouter_key:
         try:
@@ -116,17 +116,17 @@ FACTORS = {
         "uses_headline": False,
         "llm_key": "Sentiment Analysis"
     },
-    "Source Reputation": {
+    "Toxicity": {
         "enabled": False,
         "uses_headline": False,
-        "llm_key": "Source Reputation"
+        "llm_key": "Toxicity"
     }
 }
 
 SYSTEM_PROMPT = """
-You are a helpful assistant that analyzes news articles and provides scores for the following factors: Clickbait, Headline-Body-Relation, Party Affliation, Sensationalism, Sentiment Analysis, Source Reputation.
+You are a helpful assistant that analyzes news articles and provides scores for the following factors: Clickbait, Headline-Body-Relation, Party Affliation, Sensationalism, Sentiment Analysis, Toxicity.
 
-You will be given an article and you will need to analyze it and provide scores for the following factors: Clickbait, Headline-Body-Relation, Party Affliation, Sensationalism, Sentiment Analysis, Source Reputation.
+You will be given an article and you will need to analyze it and provide scores for the following factors: Clickbait, Headline-Body-Relation, Party Affliation, Sensationalism, Sentiment Analysis, Toxicity.
 
 Each Factor will be scored as such:
 
@@ -169,21 +169,24 @@ Headline: "The stock market is crashing!"
 Body: "The stock market is crashing and you should sell your stocks immediately! Your family will starve if you don't!"
 Score: Negative
 
-Source Reputation: Credible, Non-Credible, or Caution - This is based on the reputation of the source and the credibility of the information. If the source is a known fake news source, then the source reputation should be Non-Credible. If the source is a known reliable source, then the source reputation should be Credible. If the source is a known mixed source, then the source reputation should be Caution.
-Source: CNN
-Score: Credible
+Toxicity: Low, Moderate, or High – This is based on the presence and severity of toxic language in the text. If the text contains harassment, hate speech, threats, demeaning language, or aggressive insults, then the toxicity should be High. If the text contains mild, contextual, or indirect toxic language, then the toxicity should be Moderate. If the text is neutral, respectful, or factual with no toxic language, then the toxicity should be Low.
 
-Source: The Donald Trump News Network
-Score: Non-Credible
+Questions you should ask yourself is: Review the language used in the text to identify insults, slurs, profanity, or dehumanizing expressions.
+Evaluate whether the tone is hostile, threatening, or intended to provoke anger or fear.
+Determine whether the toxic language is central to the message or incidental (e.g., quoted speech or reporting).
+Assess whether specific individuals or groups are targeted and the severity of that targeting.
 
-Source: The New York Times
-Score: Credible
+Text: “These people are disgusting parasites ruining everything.”
+Score: High
 
-Source: The Onion
-Score: Non-Credible
+Text: “That argument is ridiculous and only an idiot would believe it.”
+Score: Moderate
+
+Text: “The proposal has generated strong reactions from both supporters and critics.”
+Score: Low
 """
 
-PROMPT = "Analyze the following article and provide scores for the following factors: Clickbait, Headline-Body-Relation, Party Affliation, Sensationalism, Sentiment Analysis, Source Reputation."
+PROMPT = "Analyze the following article and provide scores for the following factors: Clickbait, Headline-Body-Relation, Party Affliation, Sensationalism, Sentiment Analysis, Toxicity."
 
 def format_article_content(headline, body):
     return f"Title: {headline}\nContent: {body}"
@@ -212,7 +215,7 @@ def get_llm_predictions(headline, body):
 def get_model_predictions(headline, body, url=None, progress_bar=None, status_text=None):
     """Get predictions from all models using pre-initialized models"""
     model_results = {}
-    total_models = 6  # Clickbait, Headline-Body-Relation, Political Affiliation, Sensationalism, Sentiment, Source Reputation
+    total_models = 6  # Clickbait, Headline-Body-Relation, Political Affiliation, Sensationalism, Sentiment, Toxicity
     current_model = 0
     
     # Clickbait - uses headline
@@ -323,44 +326,44 @@ def get_model_predictions(headline, body, url=None, progress_bar=None, status_te
     except Exception as e:
         st.warning(f"Error in Sentiment Analysis model: {str(e)}")
         model_results["Sentiment Analysis"] = None
-    
-    # Source Reputation - uses URL (required)
+
+    # Toxicity - uses body
     current_model += 1
     if progress_bar:
         progress_bar.progress(current_model / total_models)
     if status_text:
-        status_text.text(f"Running Source Reputation model ({current_model}/{total_models})...")
+        status_text.text(f"Running Toxicity model ({current_model}/{total_models})...")
     
     try:
-        if MODELS.get("source_reputation") is not None:
-            # Use URL (required)
-            source_input = url.strip() if url else ""
-            if source_input:
+        if MODELS.get("toxicity") is not None:
+            # Use body text
+            toxicity_text = body.strip() if body else ""
+            if toxicity_text:
                 # Run with timeout to prevent hanging
                 try:
-                    source_reputation_result = run_with_timeout(
-                        MODELS["source_reputation"].probability,
+                    toxicity_result = run_with_timeout(
+                        MODELS["toxicity"].probability,
                         30,
-                        source_input
+                        toxicity_text
                     )
-                    # Get the trust score or combined reputation
-                    if "trust_score" in source_reputation_result:
-                        model_results["Source Reputation"] = source_reputation_result["trust_score"]
-                    elif "combined_reputation" in source_reputation_result:
-                        model_results["Source Reputation"] = source_reputation_result["combined_reputation"]
+                    if "toxicity" in toxicity_result:
+                        model_results["Toxicity"] = toxicity_result["toxicity"]
                     else:
-                        model_results["Source Reputation"] = None
+                        model_results["Toxicity"] = None
                 except TimeoutError:
-                    st.warning("Source Reputation model timed out after 30 seconds.")
-                    model_results["Source Reputation"] = None
+                    st.warning("Toxicity model timed out after 30 seconds.")
+                    model_results["Toxicity"] = None
             else:
-                model_results["Source Reputation"] = None
+                model_results["Toxicity"] = None
         else:
-            model_results["Source Reputation"] = None
+            model_results["Toxicity"] = None
     except Exception as e:
-        st.warning(f"Error in Source Reputation model: {str(e)}")
-        model_results["Source Reputation"] = None
-    
+        st.warning(f"Error in Toxicity model: {str(e)}")
+        model_results["Toxicity"] = None
+    except Exception as e:
+        st.warning(f"Error in Toxicity model: {str(e)}")
+        model_results["Toxicity"] = None
+
     if progress_bar:
         progress_bar.progress(1.0)
     if status_text:
@@ -430,9 +433,9 @@ with st.sidebar:
         status_items.append("✓ Headline-Body-Relation")
     if MODELS.get("sentiment") is not None:
         status_items.append("✓ Sentiment Analysis")
-    if MODELS.get("source_reputation") is not None:
-        status_items.append("✓ Source Reputation")
-    
+    if MODELS.get("toxicity") is not None:
+        status_items.append("✓ Toxicity")
+
     if status_items:
         for item in status_items:
             st.success(item)
@@ -441,7 +444,7 @@ with st.sidebar:
 
 headline = st.text_area("Headline", height=100, placeholder="Enter the article headline...", key="headline_input")
 body = st.text_area("Body", height=300, placeholder="Enter the article body content...", key="body_input")
-url = st.text_input("URL (required, for Source Reputation)", placeholder="Enter article URL (e.g., https://example.com/article)", key="url_input")
+url = st.text_input("URL (required, for Toxicity)", placeholder="Enter article URL (e.g., https://example.com/article)", key="url_input")
 
 if st.button("Analyze", key="analyze_button"):
     if not headline or not body or not url:
