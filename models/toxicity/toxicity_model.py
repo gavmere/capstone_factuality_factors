@@ -1,42 +1,72 @@
+# toxicity_model.py
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
+from typing import Dict, Tuple
 
 class ToxicityDetector:
-    # Model that supports multi-class toxicity classification
-    MODEL_NAME = "nlptown/bert-base-multilingual-uncased-sentiment"
-    TOXICITY_LABELS = ["friendly", "neutral", "rude", "toxic", "super_toxic"]
-    
-    def __init__(self):
-        self.tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME)
-        self.model = AutoModelForSequenceClassification.from_pretrained(self.MODEL_NAME)
-    
-    def score(self, text: str):
+    """
+    RoBERTa-based multi-class toxicity detector.
+    Labels:
+        0 -> friendly
+        1 -> neutral
+        2 -> rude
+        3 -> toxic
+        4 -> super_toxic
+    """
+
+    _instance = None  # Singleton cache
+
+    LABELS = [
+        "friendly",
+        "neutral",
+        "rude",
+        "toxic",
+        "super_toxic"
+    ]
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+
+            model_name = "roberta-base"  # or path to your fine-tuned model
+            cls._instance.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            cls._instance.model = AutoModelForSequenceClassification.from_pretrained(
+                model_name,
+                num_labels=len(cls.LABELS)
+            )
+
+            cls._instance.model.eval()
+            cls._instance.device = torch.device(
+                "cuda" if torch.cuda.is_available() else "cpu"
+            )
+            cls._instance.model.to(cls._instance.device)
+
+        return cls._instance
+
+    @torch.no_grad()
+    def score(self, text: str) -> Tuple[Dict[str, float], str]:
         """
-        Detects toxicity level in text.
-        Returns probabilities for each toxicity level:
-        - friendly: kind, respectful text
-        - neutral: objective, non-toxic text
-        - rude: impolite but not severely toxic
-        - toxic: toxic language present
-        - super_toxic: extremely toxic or hateful
+        Returns:
+            - Dict[str, float]: probability per toxicity class
+            - str: predicted label
         """
+
         inputs = self.tokenizer(
             text,
+            return_tensors="pt",
             truncation=True,
-            max_length=512,
-            padding="max_length",
-            return_tensors="pt"
-        )
-        with torch.no_grad():
-            logits = self.model(**inputs).logits
-            probs = torch.softmax(logits, dim=1).squeeze()
-        
-        # Create probability dict for each class
-        probabilities = {}
-        for i, label in enumerate(self.TOXICITY_LABELS):
-            probabilities[label] = float(probs[i]) if i < len(probs) else 0.0
-        
-        # Get the class with highest probability
-        max_idx = torch.argmax(probs).item()
-        predicted_label = self.TOXICITY_LABELS[min(max_idx, len(self.TOXICITY_LABELS) - 1)]
-        return probabilities, predicted_label
+            max_length=512
+        ).to(self.device)
+
+        outputs = self.model(**inputs)
+        logits = outputs.logits
+        probs = torch.softmax(logits, dim=1).squeeze()
+
+        scores = {
+            label: round(probs[idx].item(), 4)
+            for idx, label in enumerate(self.LABELS)
+        }
+
+        predicted_label = self.LABELS[probs.argmax().item()]
+
+        return scores, predicted_label

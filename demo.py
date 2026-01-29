@@ -10,6 +10,9 @@ from models.political_affiliation.political_affiliation import PoliticalAffiliat
 from models.sensationalism.sensationalism import Sensationalism
 from models.sentiment_analysis.sentiment_analysis import Sentiment
 from models.toxicity.toxicity import Toxicity
+from agents.orchestrator import OrchestratorAgent
+from agents.toxicity_agent import ToxicityAgent
+from agents.sentiment_agent import SentimentAgent
 
 load_dotenv()
 
@@ -484,3 +487,16 @@ if st.button("Analyze", key="analyze_button"):
             import traceback
             st.code(traceback.format_exc())
             # Keep progress bars visible to see where it failed
+
+orchestrator = OrchestratorAgent(
+    agents=[
+        ToxicityAgent(),
+        SentimentAgent()
+    ]
+)
+
+text = "You're an idiot if you believe this nonsense."
+
+results = orchestrator.run(text)
+
+print(results)

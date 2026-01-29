@@ -1,19 +1,30 @@
 # toxicity.py
-from models.factuality_factor import FactualityFactor
 from typing import Dict
+from models.factuality_factor import FactualityFactor
 from models.toxicity.toxicity_model import ToxicityDetector
+
 
 class Toxicity(FactualityFactor):
     def __init__(self):
         super().__init__(
             "Toxicity",
-            "Detect toxic text that is more likely to be disinformed. Classifies text from friendly to super toxic."
+            "Detect toxic text that is more likely to be disinformed. "
+            "Classifies text from friendly to super toxic."
         )
         self.model = ToxicityDetector()
 
     def probability(self, text: str) -> Dict[str, float]:
-        result = self.model.score(text)
-        return result["probabilities"]
+        """
+        Returns probability distribution over toxicity classes:
+        - friendly
+        - neutral
+        - rude
+        - toxic
+        - super_toxic
+        """
+        toxicity_scores, _ = self.model.score(text)
+        return toxicity_scores
+
 
 def main():
     toxicity = Toxicity()
@@ -27,8 +38,13 @@ def main():
     }
 
     for level, text in examples.items():
-        print(f"\n{level.title()} example:")
-        print(toxicity.probability(text))
+        scores = toxicity.probability(text)
+        predicted = max(scores, key=scores.get)
+
+        print(f"\n{level.upper()} example:")
+        print("Predicted:", predicted)
+        print("Scores:", scores)
+
 
 if __name__ == "__main__":
     main()

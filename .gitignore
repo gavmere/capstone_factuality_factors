@@ -1,8 +1,24 @@
+# Python
 __pycache__/
-*.py[cod]
-*$py.class
-.DS_Store
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Model artifacts & caches
+*.pkl
+*.pt
+*.bin
+*.ckpt
+
+# Embedding caches
+model_training_scripts/**/embeddings_cache/**
+
+# Local env
 .env
-models/sentiment_analysis/sentiment.json
-.gitignore
-test/
+.env.*
+venv/
+.venv/
+
+# OS
+.DS_Store
