@@ -153,21 +153,21 @@ if __name__ == "__main__":
     Body: "The stock market is crashing and you should sell your stocks immediately! Your family will starve if you don't!"
     Score: Negative
 
-    Toxicity: Low, Moderate, or High – This is based on the presence and severity of toxic language in the text. If the text contains harassment, hate speech, threats, demeaning language, or aggressive insults, then the toxicity should be High. If the text contains mild, contextual, or indirect toxic language, then the toxicity should be Moderate. If the text is neutral, respectful, or factual with no toxic language, then the toxicity should be Low.
+    Toxicity: Friendly, Neutral, Rude, Toxic, or Super Toxic – This is based on the presence and severity of toxic language in the text and the corresponding toxicity score. If the toxicity score is 0.8 or higher, the toxicity should be Super Toxic. If the toxicity score is between 0.6 and 0.8, the toxicity should be Toxic. If the toxicity score is between 0.4 and 0.6, the toxicity should be Rude. If the toxicity score is between 0.2 and 0.4, the toxicity should be Neutral. If the toxicity score is below 0.2, the toxicity should be Friendly.
 
-    Questions you should ask yourself is: Review the language used in the text to identify insults, slurs, profanity, or dehumanizing expressions.
+    Questions you should ask yourself are: Review the language used in the text to identify insults, slurs, profanity, or dehumanizing expressions.
     Evaluate whether the tone is hostile, threatening, or intended to provoke anger or fear.
     Determine whether the toxic language is central to the message or incidental (e.g., quoted speech or reporting).
     Assess whether specific individuals or groups are targeted and the severity of that targeting.
 
     Text: “These people are disgusting parasites ruining everything.”
-    Score: High
+    Score: Super Toxic
 
     Text: “That argument is ridiculous and only an idiot would believe it.”
-    Score: Moderate
+    Score: Rude
 
     Text: “The proposal has generated strong reactions from both supporters and critics.”
-    Score: Low
+    Score: Friendly
     """
 
     Prompt = """
