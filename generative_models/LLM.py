@@ -1,15 +1,72 @@
 from google import genai
 from google.genai import types
+from openai import OpenAI
+import json
 
 def generate_final_article_content(prompt, article):
     return prompt + f'Title:{article["title"]}\nSource:{article["source"]}\nAuthor:{article["author"]}\nPublication Date:{article["publication_date"]}\nContent:{article["content"]}'
 
-def generate(api_key, system_prompt, prompt, article, model="gemini-2.5-pro"):
+def generate(
+    api_key,
+    system_prompt,
+    prompt,
+    article,
+    model="gemini-2.5-pro",
+    provider="gemini",  # "gemini" or "openrouter"
+    temperature=None,
+    max_tokens=None,
+    top_p=None,
+    top_k=None,
+    **kwargs
+):
+    """
+    Generate LLM response with configurable parameters.
+    
+    Args:
+        api_key: API key for the LLM service
+        system_prompt: System instruction prompt
+        prompt: User prompt
+        article: Article dictionary with title, source, author, publication_date, content
+        model: Model name (default: "gemini-2.5-pro")
+        provider: "gemini" or "openrouter" (default: "gemini")
+        temperature: Sampling temperature (0.0-2.0, default: None for model default)
+        max_tokens: Maximum output tokens (default: None for model default)
+        top_p: Top-p sampling parameter (0.0-1.0, default: None for model default)
+        top_k: Top-k sampling parameter (default: None for model default)
+        **kwargs: Additional parameters to pass to GenerateContentConfig
+    
+    Returns:
+        Generated response text
+    """
+    if provider == "openrouter":
+        return _generate_openrouter(
+            api_key, system_prompt, prompt, article, model,
+            temperature, max_tokens, top_p, top_k, **kwargs
+        )
+    else:
+        return _generate_gemini(
+            api_key, system_prompt, prompt, article, model,
+            temperature, max_tokens, top_p, top_k, **kwargs
+        )
+
+def _generate_gemini(
+    api_key,
+    system_prompt,
+    prompt,
+    article,
+    model,
+    temperature,
+    max_tokens,
+    top_p,
+    top_k,
+    **kwargs
+):
+    """Generate using Google Gemini API."""
     result = ''
     client = genai.Client(
         api_key=api_key,
     )
-    model = model
+    
     contents = [
         types.Content(
             role="user",
@@ -18,9 +75,11 @@ def generate(api_key, system_prompt, prompt, article, model="gemini-2.5-pro"):
             ],
         ),
     ]
-    generate_content_config = types.GenerateContentConfig(
-        response_mime_type="application/json",
-        response_schema=genai.types.Schema(
+    
+    # Build config with optional parameters
+    config_params = {
+        "response_mime_type": "application/json",
+        "response_schema": genai.types.Schema(
             type = genai.types.Type.OBJECT,
             properties = {
                 "Clickbait": genai.types.Schema(
@@ -29,28 +88,47 @@ def generate(api_key, system_prompt, prompt, article, model="gemini-2.5-pro"):
                 "Headline-Body-Relation": genai.types.Schema(
                     type = genai.types.Type.NUMBER,
                 ),
-                "Party Affliation": genai.types.Schema(
+                "Political Affiliation": genai.types.Schema(
                     type = genai.types.Type.STRING,
-                    enum = ["Republican", "Democrat", "Other"],
+                    enum = ["Democratic", "Republican", "Neutral", "Other"],
                 ),
                 "Sensationalism": genai.types.Schema(
-                    type = genai.types.Type.STRING,
-                    enum = ["Sensational", "Non-Sensational"],
+                    type = genai.types.Type.NUMBER,
                 ),
                 "Sentiment Analysis": genai.types.Schema(
                     type = genai.types.Type.STRING,
-                    enum = ["Positive", "Negative", 'Neutral'],
+                    enum = ["Positive", "Negative", "Neutral"],
                 ),
+<<<<<<< Updated upstream
                 "Toxicity": genai.types.Schema(
                     type = genai.types.Type.STRING,
                     enum = ["Friendly", "Neutral", "Rude", "Toxic", "Super_Toxic"],
+=======
+                "Source Reputation": genai.types.Schema(
+                    type = genai.types.Type.NUMBER,
+>>>>>>> Stashed changes
                 ),
             },
         ),
-        system_instruction=[
+        "system_instruction": [
             types.Part.from_text(text=system_prompt),
         ],
-    )
+    }
+    
+    # Add optional parameters if provided
+    if temperature is not None:
+        config_params["temperature"] = float(temperature)
+    if max_tokens is not None:
+        config_params["max_output_tokens"] = int(max_tokens)
+    if top_p is not None:
+        config_params["top_p"] = float(top_p)
+    if top_k is not None:
+        config_params["top_k"] = int(top_k)
+    
+    # Add any additional kwargs
+    config_params.update(kwargs)
+    
+    generate_content_config = types.GenerateContentConfig(**config_params)
 
     for chunk in client.models.generate_content_stream(
         model=model,
@@ -58,6 +136,81 @@ def generate(api_key, system_prompt, prompt, article, model="gemini-2.5-pro"):
         config=generate_content_config,
     ):
         result += chunk.text
+    return result
+
+def _generate_openrouter(
+    api_key,
+    system_prompt,
+    prompt,
+    article,
+    model,
+    temperature,
+    max_tokens,
+    top_p,
+    top_k,
+    **kwargs
+):
+    """Generate using OpenRouter API."""
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=api_key,
+    )
+    
+    # Prepare messages
+    user_content = generate_final_article_content(prompt, article)
+    
+    # Enhance system prompt with JSON schema requirements for OpenRouter
+    json_schema_instruction = """
+    
+IMPORTANT: You must respond with a valid JSON object containing the following fields:
+- "Clickbait": a number between 0 and 100
+- "Headline-Body-Relation": a number between 0 and 100
+- "Political Affiliation": one of "Democratic", "Republican", "Neutral", or "Other"
+- "Sensationalism": a number between 0 and 100
+- "Sentiment Analysis": one of "Positive", "Negative", or "Neutral"
+- "Source Reputation": a number between 0 and 100
+
+Respond ONLY with valid JSON, no other text.
+"""
+    
+    enhanced_system_prompt = system_prompt + json_schema_instruction
+    
+    messages = [
+        {"role": "system", "content": enhanced_system_prompt},
+        {"role": "user", "content": user_content}
+    ]
+    
+    # Build request parameters
+    request_params = {
+        "model": model,
+        "messages": messages,
+    }
+    
+    # Try to use structured output if supported (OpenAI models)
+    if "gpt" in model.lower() or "openai" in model.lower():
+        request_params["response_format"] = {"type": "json_object"}
+    
+    # Add optional parameters
+    if temperature is not None:
+        request_params["temperature"] = float(temperature)
+    if max_tokens is not None:
+        request_params["max_tokens"] = int(max_tokens)
+    if top_p is not None:
+        request_params["top_p"] = float(top_p)
+    
+    # Some models support top_k
+    if top_k is not None and ("llama" in model.lower() or "mistral" in model.lower() or "qwen" in model.lower()):
+        request_params["top_k"] = int(top_k)
+    
+    # Add any additional kwargs
+    request_params.update(kwargs)
+    
+    # Make the request
+    response = client.chat.completions.create(**request_params)
+    
+    # Extract the response
+    result = response.choices[0].message.content
+    
     return result
 
 if __name__ == "__main__":
