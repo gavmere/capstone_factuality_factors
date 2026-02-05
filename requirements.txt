@@ -18,9 +18,7 @@ tqdm>=4.65.0
 watchdog>=3.0.0
 jupyter>=1.0.0
 ipywidgets>=8.0.0
-<<<<<<< Updated upstream
-ipython>=8.0.0
-=======
 ipython>=8.0.0
 plotly>=5.0.0
->>>>>>> Stashed changes
+google-adk
+litellm
