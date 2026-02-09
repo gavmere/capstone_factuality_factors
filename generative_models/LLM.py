@@ -99,14 +99,8 @@ def _generate_gemini(
                     type = genai.types.Type.STRING,
                     enum = ["Positive", "Negative", "Neutral"],
                 ),
-<<<<<<< Updated upstream
                 "Toxicity": genai.types.Schema(
-                    type = genai.types.Type.STRING,
-                    enum = ["Friendly", "Neutral", "Rude", "Toxic", "Super_Toxic"],
-=======
-                "Source Reputation": genai.types.Schema(
                     type = genai.types.Type.NUMBER,
->>>>>>> Stashed changes
                 ),
             },
         ),
@@ -168,6 +162,7 @@ IMPORTANT: You must respond with a valid JSON object containing the following fi
 - "Political Affiliation": one of "Democratic", "Republican", "Neutral", or "Other"
 - "Sensationalism": a number between 0 and 100
 - "Sentiment Analysis": one of "Positive", "Negative", or "Neutral"
+- "Toxicity": a number between 0 and 100
 - "Source Reputation": a number between 0 and 100
 
 Respond ONLY with valid JSON, no other text.
@@ -306,21 +301,31 @@ if __name__ == "__main__":
     Body: "The stock market is crashing and you should sell your stocks immediately! Your family will starve if you don't!"
     Score: Negative
 
-    Toxicity: Friendly, Neutral, Rude, Toxic, or Super Toxic – This is based on the presence and severity of toxic language in the text and the corresponding toxicity score. If the toxicity score is 0.8 or higher, the toxicity should be Super Toxic. If the toxicity score is between 0.6 and 0.8, the toxicity should be Toxic. If the toxicity score is between 0.4 and 0.6, the toxicity should be Rude. If the toxicity score is between 0.2 and 0.4, the toxicity should be Neutral. If the toxicity score is below 0.2, the toxicity should be Friendly.
+    Toxicity: A score from 0 to 100 representing the overall toxicity of the text. This score is based on multiple dimensions of toxic content including: overall toxicity, severe toxicity, obscene language, threats, insults, and identity-based attacks.
+    
+    The toxicity score considers:
+    - Severe toxicity: Extremely harmful, threatening, or dehumanizing content (if present, scores 85+)
+    - Threats: Direct or implied threats of violence or harm (if significant, scores 60+)
+    - Identity attacks: Attacks targeting specific groups or identities (if significant, scores 60+)
+    - Insults: Personal attacks and insulting language (if prominent, scores 40+)
+    - Obscene language: Profanity and vulgar expressions (if prominent, scores 40+)
+    - Overall hostile tone: General toxicity throughout the text
 
     Questions you should ask yourself are: Review the language used in the text to identify insults, slurs, profanity, or dehumanizing expressions.
     Evaluate whether the tone is hostile, threatening, or intended to provoke anger or fear.
     Determine whether the toxic language is central to the message or incidental (e.g., quoted speech or reporting).
     Assess whether specific individuals or groups are targeted and the severity of that targeting.
+    Consider multiple dimensions: Is it severely toxic? Threatening? An identity attack? Insulting? Obscene?
+    
+    For Example:
+    Text: "These people are disgusting parasites ruining everything."
+    Score: 95 (Severe toxicity, identity attack, and dehumanizing language)
 
-    Text: “These people are disgusting parasites ruining everything.”
-    Score: Super Toxic
+    Text: "That argument is ridiculous and only an idiot would believe it."
+    Score: 55 (Insults present, but not severe or threatening)
 
-    Text: “That argument is ridiculous and only an idiot would believe it.”
-    Score: Rude
-
-    Text: “The proposal has generated strong reactions from both supporters and critics.”
-    Score: Friendly
+    Text: "The proposal has generated strong reactions from both supporters and critics."
+    Score: 5 (Neutral, factual reporting)
     """
 
     Prompt = """

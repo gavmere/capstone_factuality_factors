@@ -10,9 +10,6 @@ from models.political_affiliation.political_affiliation import PoliticalAffiliat
 from models.sensationalism.sensationalism import Sensationalism
 from models.sentiment_analysis.sentiment_analysis import Sentiment
 from models.toxicity.toxicity import Toxicity
-from agents.orchestrator import OrchestratorAgent
-from agents.toxicity_agent import ToxicityAgent
-from agents.sentiment_agent import SentimentAgent
 
 load_dotenv()
 
@@ -120,7 +117,7 @@ FACTORS = {
         "llm_key": "Sentiment Analysis"
     },
     "Toxicity": {
-        "enabled": False,
+        "enabled": True,
         "uses_headline": False,
         "llm_key": "Toxicity"
     }
@@ -344,15 +341,13 @@ def get_model_predictions(headline, body, url=None, progress_bar=None, status_te
             if toxicity_text:
                 # Run with timeout to prevent hanging
                 try:
-                    toxicity_result = run_with_timeout(
-                        MODELS["toxicity"].probability,
+                    toxicity_category = run_with_timeout(
+                        MODELS["toxicity"].categorize,
                         30,
                         toxicity_text
                     )
-                    if "toxicity" in toxicity_result:
-                        model_results["Toxicity"] = toxicity_result["toxicity"]
-                    else:
-                        model_results["Toxicity"] = None
+                    # Returns: "Friendly", "Neutral", "Rude", "Toxic", or "Super_Toxic"
+                    model_results["Toxicity"] = toxicity_category
                 except TimeoutError:
                     st.warning("Toxicity model timed out after 30 seconds.")
                     model_results["Toxicity"] = None
@@ -360,9 +355,6 @@ def get_model_predictions(headline, body, url=None, progress_bar=None, status_te
                 model_results["Toxicity"] = None
         else:
             model_results["Toxicity"] = None
-    except Exception as e:
-        st.warning(f"Error in Toxicity model: {str(e)}")
-        model_results["Toxicity"] = None
     except Exception as e:
         st.warning(f"Error in Toxicity model: {str(e)}")
         model_results["Toxicity"] = None
@@ -487,16 +479,3 @@ if st.button("Analyze", key="analyze_button"):
             import traceback
             st.code(traceback.format_exc())
             # Keep progress bars visible to see where it failed
-
-orchestrator = OrchestratorAgent(
-    agents=[
-        ToxicityAgent(),
-        SentimentAgent()
-    ]
-)
-
-text = "You're an idiot if you believe this nonsense."
-
-results = orchestrator.run(text)
-
-print(results)
