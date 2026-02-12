@@ -16,8 +16,12 @@ from tools import (
 )
 
 load_dotenv()
+NRP_PROXY_API_BASE = "https://ellm.nrp-nautilus.io/v1"
+NRP_PROXY_API_KEY = os.getenv("NRP_PROXY_API_KEY")
 
-MODEL_NAME = os.getenv("ADK_MODEL", "openrouter/moonshotai/kimi-k2.5")
+MODEL_NAME = "openai/kimi"
+
+MODEL = LiteLlm(model=MODEL_NAME, api_base=NRP_PROXY_API_BASE, api_key=NRP_PROXY_API_KEY)
 
 
 class HeadlineInput(BaseModel):
@@ -34,7 +38,7 @@ class TextInput(BaseModel):
 
 clickbait_agent = LlmAgent(
     name="clickbait_agent",
-    model=LiteLlm(model=MODEL_NAME),
+    model=MODEL,
     description="Scores clickbait likelihood for a headline.",
     instruction=(
         "You score clickbait likelihood for a headline. "
@@ -46,7 +50,7 @@ clickbait_agent = LlmAgent(
 
 headline_body_agent = LlmAgent(
     name="headline_body_agent",
-    model=LiteLlm(model=MODEL_NAME),
+    model=MODEL,
     description="Scores headline/body semantic similarity.",
     instruction=(
         "You score headline/body relation. "
@@ -59,7 +63,7 @@ headline_body_agent = LlmAgent(
 
 political_affiliation_agent = LlmAgent(
     name="political_affiliation_agent",
-    model=LiteLlm(model=MODEL_NAME),
+    model=MODEL,
     description="Scores political affiliation probabilities.",
     instruction=(
         "You score political affiliation. "
@@ -71,7 +75,7 @@ political_affiliation_agent = LlmAgent(
 
 sensationalism_agent = LlmAgent(
     name="sensationalism_agent",
-    model=LiteLlm(model=MODEL_NAME),
+    model=MODEL,
     description="Scores sensationalism in text.",
     instruction=(
         "You score sensationalism. "
@@ -83,7 +87,7 @@ sensationalism_agent = LlmAgent(
 
 sentiment_agent = LlmAgent(
     name="sentiment_agent",
-    model=LiteLlm(model=MODEL_NAME),
+    model=MODEL,
     description="Scores sentiment in text.",
     instruction=(
         "You score sentiment. "
@@ -95,7 +99,7 @@ sentiment_agent = LlmAgent(
 
 toxicity_agent = LlmAgent(
     name="toxicity_agent",
-    model=LiteLlm(model=MODEL_NAME),
+    model=MODEL,
     description="Scores toxicity in text.",
     instruction=(
         "You score toxicity. "
@@ -107,7 +111,7 @@ toxicity_agent = LlmAgent(
 
 root_agent = LlmAgent(
     name="factuality_root_agent",
-    model=LiteLlm(model=MODEL_NAME),
+    model=MODEL,
     instruction=(
         "You are a factuality analysis assistant. "
         "Always call the appropriate sub-agent tool when the user asks for a factor "

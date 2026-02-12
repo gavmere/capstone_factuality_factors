@@ -100,6 +100,13 @@ def _generate_gemini(
                     enum = ["Positive", "Negative", "Neutral"],
                 ),
                 "Toxicity": genai.types.Schema(
+<<<<<<< HEAD
+=======
+                    type = genai.types.Type.STRING,
+                    enum = ["Friendly", "Neutral", "Rude", "Toxic", "Super_Toxic"],
+                ),
+                "Source Reputation": genai.types.Schema(
+>>>>>>> 4e2c600 (Agent Refactor)
                     type = genai.types.Type.NUMBER,
                 ),
             },
@@ -164,6 +171,7 @@ IMPORTANT: You must respond with a valid JSON object containing the following fi
 - "Sentiment Analysis": one of "Positive", "Negative", or "Neutral"
 - "Toxicity": a number between 0 and 100
 - "Source Reputation": a number between 0 and 100
+- "Toxicity": one of "Friendly", "Neutral", "Rude", "Toxic", "Super_Toxic"
 
 Respond ONLY with valid JSON, no other text.
 """
@@ -324,8 +332,16 @@ if __name__ == "__main__":
     Text: "That argument is ridiculous and only an idiot would believe it."
     Score: 55 (Insults present, but not severe or threatening)
 
+<<<<<<< HEAD
     Text: "The proposal has generated strong reactions from both supporters and critics."
     Score: 5 (Neutral, factual reporting)
+=======
+    Text: “That argument is ridiculous and only an idiogoogle/gemini-3-flash-previewt would believe it.”
+    Score: Rude
+
+    Text: “The proposal has generated strong reactions from both supporters and critics.”
+    Score: Friendly
+>>>>>>> 4e2c600 (Agent Refactor)
     """
 
     Prompt = """
