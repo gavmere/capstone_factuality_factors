@@ -14,8 +14,7 @@ from google.genai.errors import APIError, ServerError
 class PoliticalAffiliation(FactualityFactor):
     def __init__(self):
         super().__init__(
-            "Political Affiliation",
-            "Gets the political affiliation of the article"
+            "Political Affiliation", "Gets the political affiliation of the article"
         )
 
         # --- Gemini setup ---
@@ -26,7 +25,7 @@ class PoliticalAffiliation(FactualityFactor):
                 "Please export it before using the PoliticalAffiliation factor."
             )
 
-        self.gemini_model = "text-embedding-004"
+        self.gemini_model = "models/gemini-embedding-001"
         self.gemini_client = genai.Client(api_key=api_key)
 
         # --- Load trained classifier (LogisticRegression on Gemini embeddings) ---
@@ -84,7 +83,7 @@ class PoliticalAffiliation(FactualityFactor):
                     wait = sleep_base * (attempt + 1)
                     print(
                         f"[PoliticalAffiliation] ServerError on batch "
-                        f"{start}:{start+len(batch)}, attempt {attempt+1}/{max_retries} "
+                        f"{start}:{start + len(batch)}, attempt {attempt + 1}/{max_retries} "
                         f"→ retrying in {wait:.1f}s"
                     )
                     time.sleep(wait)
@@ -96,7 +95,7 @@ class PoliticalAffiliation(FactualityFactor):
             else:
                 print(
                     f"[PoliticalAffiliation] FAILED after {max_retries} retries on batch "
-                    f"{start}:{start+len(batch)}"
+                    f"{start}:{start + len(batch)}"
                 )
                 if last_exc is not None:
                     raise last_exc
@@ -124,16 +123,13 @@ class PoliticalAffiliation(FactualityFactor):
         proba = self.model.predict_proba(X)[0]  # shape (n_classes,)
 
         # 3. Map to label → prob
-        return {
-            label: float(p)
-            for label, p in zip(self.output_labels, proba)
-        }
+        return {label: float(p) for label, p in zip(self.output_labels, proba)}
 
 
 if __name__ == "__main__":
-
     from dotenv import load_dotenv
     import os
+
     load_dotenv()
     gemini_key = os.environ.get("GEMINI_API_KEY")
     factor = PoliticalAffiliation()

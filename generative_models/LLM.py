@@ -3,8 +3,13 @@ from google.genai import types
 from openai import OpenAI
 import json
 
+
 def generate_final_article_content(prompt, article):
-    return prompt + f'Title:{article["title"]}\nSource:{article["source"]}\nAuthor:{article["author"]}\nPublication Date:{article["publication_date"]}\nContent:{article["content"]}'
+    return (
+        prompt
+        + f"Title:{article['title']}\nSource:{article['source']}\nAuthor:{article['author']}\nPublication Date:{article['publication_date']}\nContent:{article['content']}"
+    )
+
 
 def generate(
     api_key,
@@ -17,11 +22,11 @@ def generate(
     max_tokens=None,
     top_p=None,
     top_k=None,
-    **kwargs
+    **kwargs,
 ):
     """
     Generate LLM response with configurable parameters.
-    
+
     Args:
         api_key: API key for the LLM service
         system_prompt: System instruction prompt
@@ -34,20 +39,37 @@ def generate(
         top_p: Top-p sampling parameter (0.0-1.0, default: None for model default)
         top_k: Top-k sampling parameter (default: None for model default)
         **kwargs: Additional parameters to pass to GenerateContentConfig
-    
+
     Returns:
         Generated response text
     """
     if provider == "openrouter":
         return _generate_openrouter(
-            api_key, system_prompt, prompt, article, model,
-            temperature, max_tokens, top_p, top_k, **kwargs
+            api_key,
+            system_prompt,
+            prompt,
+            article,
+            model,
+            temperature,
+            max_tokens,
+            top_p,
+            top_k,
+            **kwargs,
         )
     else:
         return _generate_gemini(
-            api_key, system_prompt, prompt, article, model,
-            temperature, max_tokens, top_p, top_k, **kwargs
+            api_key,
+            system_prompt,
+            prompt,
+            article,
+            model,
+            temperature,
+            max_tokens,
+            top_p,
+            top_k,
+            **kwargs,
         )
+
 
 def _generate_gemini(
     api_key,
@@ -59,55 +81,51 @@ def _generate_gemini(
     max_tokens,
     top_p,
     top_k,
-    **kwargs
+    **kwargs,
 ):
     """Generate using Google Gemini API."""
-    result = ''
+    result = ""
     client = genai.Client(
         api_key=api_key,
     )
-    
+
     contents = [
         types.Content(
             role="user",
             parts=[
-                types.Part.from_text(text=generate_final_article_content(prompt, article)),
+                types.Part.from_text(
+                    text=generate_final_article_content(prompt, article)
+                ),
             ],
         ),
     ]
-    
+
     # Build config with optional parameters
     config_params = {
         "response_mime_type": "application/json",
         "response_schema": genai.types.Schema(
-            type = genai.types.Type.OBJECT,
-            properties = {
+            type=genai.types.Type.OBJECT,
+            properties={
                 "Clickbait": genai.types.Schema(
-                    type = genai.types.Type.NUMBER,
+                    type=genai.types.Type.NUMBER,
                 ),
                 "Headline-Body-Relation": genai.types.Schema(
-                    type = genai.types.Type.NUMBER,
+                    type=genai.types.Type.NUMBER,
                 ),
                 "Political Affiliation": genai.types.Schema(
-                    type = genai.types.Type.STRING,
-                    enum = ["Democratic", "Republican", "Neutral", "Other"],
+                    type=genai.types.Type.STRING,
+                    enum=["Democratic", "Republican", "Neutral", "Other"],
                 ),
                 "Sensationalism": genai.types.Schema(
-                    type = genai.types.Type.NUMBER,
+                    type=genai.types.Type.NUMBER,
                 ),
                 "Sentiment Analysis": genai.types.Schema(
-                    type = genai.types.Type.STRING,
-                    enum = ["Positive", "Negative", "Neutral"],
+                    type=genai.types.Type.STRING,
+                    enum=["Positive", "Negative", "Neutral"],
                 ),
                 "Toxicity": genai.types.Schema(
-<<<<<<< HEAD
-=======
-                    type = genai.types.Type.STRING,
-                    enum = ["Friendly", "Neutral", "Rude", "Toxic", "Super_Toxic"],
-                ),
-                "Source Reputation": genai.types.Schema(
->>>>>>> 4e2c600 (Agent Refactor)
-                    type = genai.types.Type.NUMBER,
+                    type=genai.types.Type.STRING,
+                    enum=["Friendly", "Neutral", "Rude", "Toxic", "Super_Toxic"],
                 ),
             },
         ),
@@ -115,7 +133,7 @@ def _generate_gemini(
             types.Part.from_text(text=system_prompt),
         ],
     }
-    
+
     # Add optional parameters if provided
     if temperature is not None:
         config_params["temperature"] = float(temperature)
@@ -125,10 +143,10 @@ def _generate_gemini(
         config_params["top_p"] = float(top_p)
     if top_k is not None:
         config_params["top_k"] = int(top_k)
-    
+
     # Add any additional kwargs
     config_params.update(kwargs)
-    
+
     generate_content_config = types.GenerateContentConfig(**config_params)
 
     for chunk in client.models.generate_content_stream(
@@ -138,6 +156,7 @@ def _generate_gemini(
     ):
         result += chunk.text
     return result
+
 
 def _generate_openrouter(
     api_key,
@@ -149,17 +168,17 @@ def _generate_openrouter(
     max_tokens,
     top_p,
     top_k,
-    **kwargs
+    **kwargs,
 ):
     """Generate using OpenRouter API."""
     client = OpenAI(
         base_url="https://openrouter.ai/api/v1",
         api_key=api_key,
     )
-    
+
     # Prepare messages
     user_content = generate_final_article_content(prompt, article)
-    
+
     # Enhance system prompt with JSON schema requirements for OpenRouter
     json_schema_instruction = """
     
@@ -169,30 +188,28 @@ IMPORTANT: You must respond with a valid JSON object containing the following fi
 - "Political Affiliation": one of "Democratic", "Republican", "Neutral", or "Other"
 - "Sensationalism": a number between 0 and 100
 - "Sentiment Analysis": one of "Positive", "Negative", or "Neutral"
-- "Toxicity": a number between 0 and 100
-- "Source Reputation": a number between 0 and 100
 - "Toxicity": one of "Friendly", "Neutral", "Rude", "Toxic", "Super_Toxic"
 
 Respond ONLY with valid JSON, no other text.
 """
-    
+
     enhanced_system_prompt = system_prompt + json_schema_instruction
-    
+
     messages = [
         {"role": "system", "content": enhanced_system_prompt},
-        {"role": "user", "content": user_content}
+        {"role": "user", "content": user_content},
     ]
-    
+
     # Build request parameters
     request_params = {
         "model": model,
         "messages": messages,
     }
-    
+
     # Try to use structured output if supported (OpenAI models)
     if "gpt" in model.lower() or "openai" in model.lower():
         request_params["response_format"] = {"type": "json_object"}
-    
+
     # Add optional parameters
     if temperature is not None:
         request_params["temperature"] = float(temperature)
@@ -200,25 +217,31 @@ Respond ONLY with valid JSON, no other text.
         request_params["max_tokens"] = int(max_tokens)
     if top_p is not None:
         request_params["top_p"] = float(top_p)
-    
+
     # Some models support top_k
-    if top_k is not None and ("llama" in model.lower() or "mistral" in model.lower() or "qwen" in model.lower()):
+    if top_k is not None and (
+        "llama" in model.lower()
+        or "mistral" in model.lower()
+        or "qwen" in model.lower()
+    ):
         request_params["top_k"] = int(top_k)
-    
+
     # Add any additional kwargs
     request_params.update(kwargs)
-    
+
     # Make the request
     response = client.chat.completions.create(**request_params)
-    
+
     # Extract the response
     result = response.choices[0].message.content
-    
+
     return result
+
 
 if __name__ == "__main__":
     import os
     from dotenv import load_dotenv
+
     load_dotenv()
     API_key = os.getenv("AI_STUDIO_API_KEY")
     ARTICLE = {
@@ -226,7 +249,7 @@ if __name__ == "__main__":
         "source": "CNN",
         "author": "Andrew Freedman",
         "publication_date": "2025-10-22 10:00:00",
-        "content": '''The Billion-Dollar Weather and Climate Disasters Database, which the Trump administration"retired" in May, has relaunched outside of the government using the same methodology. In its first update at the new site, the database shows that the first six months of 2025 have been the most expensive first six months of any year since 1980. The Billion-Dollar Database tracks the financial costs of property and other infrastructure destroyed by extreme weather disasters in the United States, focusing on events that caused $1 billion or more in damages. So far, 2025 has racked up $101.4 billion in such losses. The climate research nonprofit Climate Centralnow hosts the databaseand makes this information available to insurers, policy makers, broadcast meteorologists and ordinary citizens. The database was rebuilt and will be maintained by its previous administrator Adam Smith, a former economist at the National Oceanic and Atmospheric Administration, the agency which used to host it. Smith found 14 billion-dollar disasters in the first half of this year, including the Los Angeles wildfires in January and a tornado outbreak across the central US in mid-March.More billion-dollar disasters are likely to be added to the list before 2025 is over. Without the database, the public would have no easy way to track the cost of extreme weather events, many of which are becoming more common and severe because of climate change. But climate change is not the sole reason the database shows an upward trend in both the number of billion-dollar disasters and the amount they cost. Population growth and an increase in the number of buildings in harm's way are the dominant factors, according to Smith. "Either way you look at it, the rise in damages relates to human activities and choices, and so you need to use information in context to better evaluate future choices," he said. The frequency of billion-dollar disasters has particularly increased in the last decade, Smith said, occurring nearly twice as often compared to the 30-year inflation-adjusted average. Between 1980 and 2024, there were nine such disasters on average each year. In the past five years, that annual average has jumped to 24. Therecord for a single yearwas 28 events in 2023. In the first six months of 2025, the list of billion-dollar disasters is mostly comprised of severe thunderstorms and tornado outbreaks, reflecting the conspicuous absence of landfalling hurricanes so far this season. However, the LA fires in January cost $61.2 billion, making them the costliest wildfires in US history, according to Climate Central. Climate Central hired Smith after the NOAA economist took early retirement this year, as part of the Trump administration's push to shrink the federal bureaucracy. NOAA's official list stopsat the end of2024. Climate Central's version picks up in 2025 and will continue from there. The relaunched list uses the same methodology as the old NOAA one, Smith said. It relies on data from insurance companies and other sources, some of which is proprietary, to tally up total losses. The decision to discontinue the database was due in part to Smith's exit from NOAA. It would have been a difficult task for the agency to continue without him, but it could have done it, he said. The choice to discontinue the database was in keeping with the administration's focus on cutting climate change datasets and programs across federal agencies. But there were calls for it to continue from multiple sectors. "This dataset was simply too important to stop being updated. Demand for its revival actually came from several aspects of industry and society, including decision makers in the insurance, reinsurance risk space, academia, Congress and local communities," Smith said.'''
+        "content": """The Billion-Dollar Weather and Climate Disasters Database, which the Trump administration"retired" in May, has relaunched outside of the government using the same methodology. In its first update at the new site, the database shows that the first six months of 2025 have been the most expensive first six months of any year since 1980. The Billion-Dollar Database tracks the financial costs of property and other infrastructure destroyed by extreme weather disasters in the United States, focusing on events that caused $1 billion or more in damages. So far, 2025 has racked up $101.4 billion in such losses. The climate research nonprofit Climate Centralnow hosts the databaseand makes this information available to insurers, policy makers, broadcast meteorologists and ordinary citizens. The database was rebuilt and will be maintained by its previous administrator Adam Smith, a former economist at the National Oceanic and Atmospheric Administration, the agency which used to host it. Smith found 14 billion-dollar disasters in the first half of this year, including the Los Angeles wildfires in January and a tornado outbreak across the central US in mid-March.More billion-dollar disasters are likely to be added to the list before 2025 is over. Without the database, the public would have no easy way to track the cost of extreme weather events, many of which are becoming more common and severe because of climate change. But climate change is not the sole reason the database shows an upward trend in both the number of billion-dollar disasters and the amount they cost. Population growth and an increase in the number of buildings in harm's way are the dominant factors, according to Smith. "Either way you look at it, the rise in damages relates to human activities and choices, and so you need to use information in context to better evaluate future choices," he said. The frequency of billion-dollar disasters has particularly increased in the last decade, Smith sa...""",
     }
 
     System_Prompt = """
@@ -309,43 +332,26 @@ if __name__ == "__main__":
     Body: "The stock market is crashing and you should sell your stocks immediately! Your family will starve if you don't!"
     Score: Negative
 
-    Toxicity: A score from 0 to 100 representing the overall toxicity of the text. This score is based on multiple dimensions of toxic content including: overall toxicity, severe toxicity, obscene language, threats, insults, and identity-based attacks.
+    Toxicity: Friendly, Neutral, Rude, Toxic, or Super Toxic – This is based on the presence and severity of toxic language in the text.
     
-    The toxicity score considers:
-    - Severe toxicity: Extremely harmful, threatening, or dehumanizing content (if present, scores 85+)
-    - Threats: Direct or implied threats of violence or harm (if significant, scores 60+)
-    - Identity attacks: Attacks targeting specific groups or identities (if significant, scores 60+)
-    - Insults: Personal attacks and insulting language (if prominent, scores 40+)
-    - Obscene language: Profanity and vulgar expressions (if prominent, scores 40+)
-    - Overall hostile tone: General toxicity throughout the text
-
     Questions you should ask yourself are: Review the language used in the text to identify insults, slurs, profanity, or dehumanizing expressions.
     Evaluate whether the tone is hostile, threatening, or intended to provoke anger or fear.
     Determine whether the toxic language is central to the message or incidental (e.g., quoted speech or reporting).
     Assess whether specific individuals or groups are targeted and the severity of that targeting.
-    Consider multiple dimensions: Is it severely toxic? Threatening? An identity attack? Insulting? Obscene?
     
     For Example:
     Text: "These people are disgusting parasites ruining everything."
-    Score: 95 (Severe toxicity, identity attack, and dehumanizing language)
+    Score: Super_Toxic
 
     Text: "That argument is ridiculous and only an idiot would believe it."
-    Score: 55 (Insults present, but not severe or threatening)
-
-<<<<<<< HEAD
-    Text: "The proposal has generated strong reactions from both supporters and critics."
-    Score: 5 (Neutral, factual reporting)
-=======
-    Text: “That argument is ridiculous and only an idiogoogle/gemini-3-flash-previewt would believe it.”
     Score: Rude
 
-    Text: “The proposal has generated strong reactions from both supporters and critics.”
+    Text: "The proposal has generated strong reactions from both supporters and critics."
     Score: Friendly
->>>>>>> 4e2c600 (Agent Refactor)
     """
 
     Prompt = """
     Analyze the following article and provide scores for the following factors: Clickbait, Headline-Body-Relation, Party Affliation, Sensationalism, Sentiment Analysis, Toxicity.
     """
-    result = generate(API_key, System_Prompt, Prompt, ARTICLE, model='gemini-2.5-pro')
+    result = generate(API_key, System_Prompt, Prompt, ARTICLE, model="gemini-2.5-pro")
     print(result)

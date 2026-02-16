@@ -41,12 +41,14 @@ class Sensationalism(FactualityFactor):
                 "Please export it before using the Sensationalism factor."
             )
 
-        self.gemini_model = "text-embedding-004"
+        self.gemini_model = "models/text-embedding-004"
         self.gemini_client = genai.Client(api_key=api_key)
 
         # --- Load trained classifier ---
         # Make sure this path matches where you saved the model in your notebook
-        model_path = os.path.join("models", "sensationalism","sensationalism_gemini_goemotions.joblib")
+        model_path = os.path.join(
+            "models", "sensationalism", "sensationalism_gemini_goemotions.joblib"
+        )
         if not os.path.exists(model_path):
             raise FileNotFoundError(
                 f"Could not find sensationalism model at {model_path}. "
@@ -91,8 +93,8 @@ class Sensationalism(FactualityFactor):
                     wait = sleep_base * (attempt + 1)
                     # You can replace prints with logging if you prefer
                     print(
-                        f"[Sensationalism] ServerError on batch {start}:{start+len(batch)}, "
-                        f"attempt {attempt+1}/{max_retries} → retrying in {wait:.1f}s"
+                        f"[Sensationalism] ServerError on batch {start}:{start + len(batch)}, "
+                        f"attempt {attempt + 1}/{max_retries} → retrying in {wait:.1f}s"
                     )
                     time.sleep(wait)
                 except APIError as e:
@@ -104,7 +106,7 @@ class Sensationalism(FactualityFactor):
                 # All retries exhausted
                 print(
                     f"[Sensationalism] FAILED after {max_retries} retries on batch "
-                    f"{start}:{start+len(batch)}"
+                    f"{start}:{start + len(batch)}"
                 )
                 if last_exc is not None:
                     raise last_exc

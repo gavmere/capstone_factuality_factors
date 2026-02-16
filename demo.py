@@ -13,27 +13,31 @@ from models.toxicity.toxicity import Toxicity
 
 load_dotenv()
 
+
 def run_with_timeout(func, timeout_seconds=60, *args, **kwargs):
     """Run a function with a timeout using threading (works in all environments including Streamlit)"""
     result = [None]
     exception = [None]
-    
+
     def target():
         try:
             result[0] = func(*args, **kwargs)
         except Exception as e:
             exception[0] = e
-    
+
     thread = threading.Thread(target=target)
     thread.daemon = True
     thread.start()
     thread.join(timeout_seconds)
-    
+
     if thread.is_alive():
-        raise TimeoutError(f"Function {func.__name__} timed out after {timeout_seconds} seconds")
+        raise TimeoutError(
+            f"Function {func.__name__} timed out after {timeout_seconds} seconds"
+        )
     if exception[0]:
         raise exception[0]
     return result[0]
+
 
 # Initialize models at startup
 @st.cache_resource
@@ -41,26 +45,26 @@ def initialize_models():
     """Initialize all models and cache them in memory"""
     models = {}
     openrouter_key = os.getenv("OPENROUTER_API_KEY")
-    
+
     # Initialize models that don't need API keys
     try:
         models["political_affiliation"] = PoliticalAffiliation()
     except Exception as e:
         print(f"Failed to load Political Affiliation model: {str(e)}")
         models["political_affiliation"] = None
-    
+
     try:
         models["sensationalism"] = Sensationalism()
     except Exception as e:
         print(f"Failed to load Sensationalism model: {str(e)}")
         models["sensationalism"] = None
-    
+
     try:
         models["sentiment"] = Sentiment()
     except Exception as e:
         print(f"Failed to load Sentiment Analysis model: {str(e)}")
         models["sentiment"] = None
-    
+
     try:
         models["toxicity"] = Toxicity()
     except Exception as e:
@@ -74,53 +78,48 @@ def initialize_models():
         except Exception as e:
             print(f"Failed to load Clickbait model: {str(e)}")
             models["clickbait"] = None
-        
+
         try:
             models["headline_body_relation"] = HeadlineBodyRelation(openrouter_key)
         except Exception as e:
             print(f"Failed to load Headline-Body-Relation model: {str(e)}")
             models["headline_body_relation"] = None
     else:
-        print("OPENROUTER_API_KEY not found. Models requiring API keys will not be available.")
+        print(
+            "OPENROUTER_API_KEY not found. Models requiring API keys will not be available."
+        )
         models["clickbait"] = None
         models["headline_body_relation"] = None
-    
+
     return models
+
 
 # Initialize models at startup
 MODELS = initialize_models()
 
 FACTORS = {
-    "Clickbait": {
-        "enabled": True,
-        "uses_headline": False,
-        "llm_key": "Clickbait"
-    },
+    "Clickbait": {"enabled": True, "uses_headline": False, "llm_key": "Clickbait"},
     "Headline-Body-Relation": {
         "enabled": True,
         "uses_headline": True,
-        "llm_key": "Headline-Body-Relation"
+        "llm_key": "Headline-Body-Relation",
     },
     "Political Affiliation": {
         "enabled": True,
         "uses_headline": False,
-        "llm_key": "Party Affliation"
+        "llm_key": "Party Affliation",
     },
     "Sensationalism": {
         "enabled": False,
         "uses_headline": True,
-        "llm_key": "Sensationalism"
+        "llm_key": "Sensationalism",
     },
     "Sentiment Analysis": {
         "enabled": True,
         "uses_headline": False,
-        "llm_key": "Sentiment Analysis"
+        "llm_key": "Sentiment Analysis",
     },
-    "Toxicity": {
-        "enabled": True,
-        "uses_headline": False,
-        "llm_key": "Toxicity"
-    }
+    "Toxicity": {"enabled": True, "uses_headline": False, "llm_key": "Toxicity"},
 }
 
 SYSTEM_PROMPT = """
@@ -169,7 +168,7 @@ Headline: "The stock market is crashing!"
 Body: "The stock market is crashing and you should sell your stocks immediately! Your family will starve if you don't!"
 Score: Negative
 
-Toxicity: Low, Moderate, or High – This is based on the presence and severity of toxic language in the text. If the text contains harassment, hate speech, threats, demeaning language, or aggressive insults, then the toxicity should be High. If the text contains mild, contextual, or indirect toxic language, then the toxicity should be Moderate. If the text is neutral, respectful, or factual with no toxic language, then the toxicity should be Low.
+Toxicity: Friendly, Neutral, Rude, Toxic, or Super_Toxic – This is based on the presence and severity of toxic language in the text.
 
 Questions you should ask yourself is: Review the language used in the text to identify insults, slurs, profanity, or dehumanizing expressions.
 Evaluate whether the tone is hostile, threatening, or intended to provoke anger or fear.
@@ -177,34 +176,36 @@ Determine whether the toxic language is central to the message or incidental (e.
 Assess whether specific individuals or groups are targeted and the severity of that targeting.
 
 Text: “These people are disgusting parasites ruining everything.”
-Score: High
+Score: Super_Toxic
 
 Text: “That argument is ridiculous and only an idiot would believe it.”
-Score: Moderate
+Score: Rude
 
 Text: “The proposal has generated strong reactions from both supporters and critics.”
-Score: Low
+Score: Friendly
 """
 
 PROMPT = "Analyze the following article and provide scores for the following factors: Clickbait, Headline-Body-Relation, Party Affliation, Sensationalism, Sentiment Analysis, Toxicity."
 
+
 def format_article_content(headline, body):
     return f"Title: {headline}\nContent: {body}"
+
 
 def get_llm_predictions(headline, body):
     api_key = os.getenv("AI_STUDIO_API_KEY")
     if not api_key:
         st.error("AI_STUDIO_API_KEY not found in environment variables")
         return None
-    
+
     article = {
         "title": headline,
         "source": "Unknown",
         "author": "Unknown",
         "publication_date": "Unknown",
-        "content": body
+        "content": body,
     }
-    
+
     try:
         result = generate(api_key, SYSTEM_PROMPT, PROMPT, article)
         return json.loads(result)
@@ -212,19 +213,22 @@ def get_llm_predictions(headline, body):
         st.error(f"Error getting LLM predictions: {str(e)}")
         return None
 
-def get_model_predictions(headline, body, url=None, progress_bar=None, status_text=None):
+
+def get_model_predictions(
+    headline, body, url=None, progress_bar=None, status_text=None
+):
     """Get predictions from all models using pre-initialized models"""
     model_results = {}
     total_models = 6  # Clickbait, Headline-Body-Relation, Political Affiliation, Sensationalism, Sentiment, Toxicity
     current_model = 0
-    
+
     # Clickbait - uses headline
     current_model += 1
     if progress_bar:
         progress_bar.progress(current_model / total_models)
     if status_text:
         status_text.text(f"Running Clickbait model ({current_model}/{total_models})...")
-    
+
     try:
         if MODELS.get("clickbait") is not None:
             clickbait_probs = MODELS["clickbait"].probability(headline)
@@ -238,14 +242,16 @@ def get_model_predictions(headline, body, url=None, progress_bar=None, status_te
     except Exception as e:
         st.warning(f"Error in Clickbait model: {str(e)}")
         model_results["Clickbait"] = None
-    
+
     # Headline-Body-Relation - uses headline and body
     current_model += 1
     if progress_bar:
         progress_bar.progress(current_model / total_models)
     if status_text:
-        status_text.text(f"Running Headline-Body-Relation model ({current_model}/{total_models})...")
-    
+        status_text.text(
+            f"Running Headline-Body-Relation model ({current_model}/{total_models})..."
+        )
+
     try:
         if MODELS.get("headline_body_relation") is not None:
             hbr_result = MODELS["headline_body_relation"].probability(headline, body)
@@ -255,14 +261,16 @@ def get_model_predictions(headline, body, url=None, progress_bar=None, status_te
     except Exception as e:
         st.warning(f"Error in Headline-Body-Relation model: {str(e)}")
         model_results["Headline-Body-Relation"] = None
-    
+
     # Political Affiliation - uses body
     current_model += 1
     if progress_bar:
         progress_bar.progress(current_model / total_models)
     if status_text:
-        status_text.text(f"Running Political Affiliation model ({current_model}/{total_models})...")
-    
+        status_text.text(
+            f"Running Political Affiliation model ({current_model}/{total_models})..."
+        )
+
     try:
         if MODELS.get("political_affiliation") is not None:
             pol_aff_probs = MODELS["political_affiliation"].probability(body)
@@ -275,14 +283,16 @@ def get_model_predictions(headline, body, url=None, progress_bar=None, status_te
     except Exception as e:
         st.warning(f"Error in Political Affiliation model: {str(e)}")
         model_results["Political Affiliation"] = None
-    
+
     # Sensationalism - uses headline and body
     current_model += 1
     if progress_bar:
         progress_bar.progress(current_model / total_models)
     if status_text:
-        status_text.text(f"Running Sensationalism model ({current_model}/{total_models})...")
-    
+        status_text.text(
+            f"Running Sensationalism model ({current_model}/{total_models})..."
+        )
+
     try:
         if MODELS.get("sensationalism") is not None:
             # Combine headline and body for sensationalism analysis
@@ -290,12 +300,12 @@ def get_model_predictions(headline, body, url=None, progress_bar=None, status_te
             # Run with timeout to prevent hanging
             try:
                 sensationalism_result = run_with_timeout(
-                    MODELS["sensationalism"].probability,
-                    30,
-                    sensationalism_text
+                    MODELS["sensationalism"].probability, 30, sensationalism_text
                 )
                 if "sensationalism" in sensationalism_result:
-                    model_results["Sensationalism"] = sensationalism_result["sensationalism"]
+                    model_results["Sensationalism"] = sensationalism_result[
+                        "sensationalism"
+                    ]
                 else:
                     model_results["Sensationalism"] = None
             except TimeoutError:
@@ -306,14 +316,16 @@ def get_model_predictions(headline, body, url=None, progress_bar=None, status_te
     except Exception as e:
         st.warning(f"Error in Sensationalism model: {str(e)}")
         model_results["Sensationalism"] = None
-    
+
     # Sentiment Analysis - uses body
     current_model += 1
     if progress_bar:
         progress_bar.progress(current_model / total_models)
     if status_text:
-        status_text.text(f"Running Sentiment Analysis model ({current_model}/{total_models})...")
-    
+        status_text.text(
+            f"Running Sentiment Analysis model ({current_model}/{total_models})..."
+        )
+
     try:
         if MODELS.get("sentiment") is not None:
             sentiment_probs = MODELS["sentiment"].probability(body)
@@ -333,7 +345,7 @@ def get_model_predictions(headline, body, url=None, progress_bar=None, status_te
         progress_bar.progress(current_model / total_models)
     if status_text:
         status_text.text(f"Running Toxicity model ({current_model}/{total_models})...")
-    
+
     try:
         if MODELS.get("toxicity") is not None:
             # Use body text
@@ -342,9 +354,7 @@ def get_model_predictions(headline, body, url=None, progress_bar=None, status_te
                 # Run with timeout to prevent hanging
                 try:
                     toxicity_category = run_with_timeout(
-                        MODELS["toxicity"].categorize,
-                        30,
-                        toxicity_text
+                        MODELS["toxicity"].categorize, 30, toxicity_text
                     )
                     # Returns: "Friendly", "Neutral", "Rude", "Toxic", or "Super_Toxic"
                     model_results["Toxicity"] = toxicity_category
@@ -363,24 +373,25 @@ def get_model_predictions(headline, body, url=None, progress_bar=None, status_te
         progress_bar.progress(1.0)
     if status_text:
         status_text.text("Model predictions complete!")
-    
+
     return model_results
+
 
 def display_results(llm_results, model_results):
     """Display results in a table format with LLM and Model columns"""
     if not llm_results and not model_results:
         return
-    
+
     enabled_factors = {k: v for k, v in FACTORS.items() if v["enabled"]}
-    
+
     # Create a table with columns
     st.subheader("Analysis Results")
-    
+
     # Create data for the table
     table_data = []
     for factor_name, factor_config in enabled_factors.items():
         llm_key = factor_config["llm_key"]
-        
+
         # Get LLM result
         llm_value = None
         if llm_results and llm_key in llm_results:
@@ -391,7 +402,7 @@ def display_results(llm_results, model_results):
                 llm_display = str(llm_value)
         else:
             llm_display = "N/A"
-        
+
         # Get Model result
         model_value = model_results.get(factor_name)
         if model_value is not None:
@@ -401,16 +412,19 @@ def display_results(llm_results, model_results):
                 model_display = str(model_value)
         else:
             model_display = "N/A"
-        
-        table_data.append({
-            "Factor": factor_name,
-            "LLM Prediction": llm_display,
-            "Model Prediction": model_display
-        })
-    
+
+        table_data.append(
+            {
+                "Factor": factor_name,
+                "LLM Prediction": llm_display,
+                "Model Prediction": model_display,
+            }
+        )
+
     # Display as a table
     if table_data:
         st.table(table_data)
+
 
 st.title("Factuality Factors Analysis")
 
@@ -437,9 +451,23 @@ with st.sidebar:
     else:
         st.warning("No models loaded. Check your API keys and model files.")
 
-headline = st.text_area("Headline", height=100, placeholder="Enter the article headline...", key="headline_input")
-body = st.text_area("Body", height=300, placeholder="Enter the article body content...", key="body_input")
-url = st.text_input("URL (required, for Toxicity)", placeholder="Enter article URL (e.g., https://example.com/article)", key="url_input")
+headline = st.text_area(
+    "Headline",
+    height=100,
+    placeholder="Enter the article headline...",
+    key="headline_input",
+)
+body = st.text_area(
+    "Body",
+    height=300,
+    placeholder="Enter the article body content...",
+    key="body_input",
+)
+url = st.text_input(
+    "URL (required, for Toxicity)",
+    placeholder="Enter article URL (e.g., https://example.com/article)",
+    key="url_input",
+)
 
 if st.button("Analyze", key="analyze_button"):
     if not headline or not body or not url:
@@ -450,25 +478,27 @@ if st.button("Analyze", key="analyze_button"):
         status_text = st.empty()
         model_progress = None
         model_status = None
-        
+
         try:
             # Get LLM predictions
             status_text.text("Getting LLM predictions...")
             overall_progress.progress(0.1)
             llm_results = get_llm_predictions(headline, body)
             overall_progress.progress(0.3)
-            
+
             # Get model predictions with progress
             status_text.text("Running models...")
             model_progress = st.progress(0)
             model_status = st.empty()
-            model_results = get_model_predictions(headline, body, url, model_progress, model_status)
+            model_results = get_model_predictions(
+                headline, body, url, model_progress, model_status
+            )
             overall_progress.progress(0.9)
-            
+
             # Complete
             overall_progress.progress(1.0)
             status_text.text("Analysis complete!")
-            
+
             if llm_results or model_results:
                 st.success("Analysis complete!")
                 display_results(llm_results, model_results)
@@ -477,5 +507,6 @@ if st.button("Analyze", key="analyze_button"):
         except Exception as e:
             st.error(f"An error occurred during analysis: {str(e)}")
             import traceback
+
             st.code(traceback.format_exc())
             # Keep progress bars visible to see where it failed
