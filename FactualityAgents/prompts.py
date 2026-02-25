@@ -13,7 +13,7 @@ def wrap_xml(content: str, tag: str) -> str:
 #
 # This block is designed to be embedded into each sub-agent prompt so that:
 #   - numeric factors (clickbait, sensationalism, HBR) can leverage DIR signals
-#   - categorical factors (political, sentiment, toxicity) leverage CIM constraints
+#   - categorical factors (political) leverage CIM constraints
 #
 # IMPORTANT: Agents must NOT output intermediate reasoning; only final JSON.
 # -----------------------------------------------------------------------------
@@ -44,16 +44,11 @@ DIR > 0.75 → High distortion
 DIR 0.3–0.75 → Moderate distortion
 DIR < 0.3 → Low distortion
 
-NOTE: DIR is most relevant to Clickbait, Sensationalism, and Headline-Body-Relation.
-If you are scoring a factor where DIR is not directly relevant (e.g., toxicity), you may skip computing DIR
-and follow OBJECTIVE 2 and the fractal layers.
-
 OBJECTIVE 2 — Conservative Inference Minimization (CIM)
 Minimize: Overconfident labeling without textual justification.
 
 Rules:
 - Political affiliation must require consistent partisan framing.
-- Toxicity must be based on explicit wording.
 - Sentiment must rely on clear evaluative language.
 - Use ONLY information present in the article text.
 - Never invent external facts.
@@ -180,12 +175,96 @@ Score the relation from 0 to 100.
 - 0: Headline is unrelated or contradicts the body.
 """
 
+HBR_FCOT = """
+You are a Headline–Body Alignment Agent implementing dual-objective optimization.
+
+DUAL OBJECTIVE FUNCTIONS
+
+OBJECTIVE 1 — Claim Alignment & Coverage (CAC)
+Maximize: Accurate detection of how well the headline is supported by and representative of the body.
+
+Definitions:
+- Headline Claims (HC): distinct claims or assertions implied by the headline (often 1–3).
+- Supported Headline Claims (SHC): headline claims that are explicitly supported in the body
+  via matching events, named entities, direct attribution, or concrete details.
+- Key Body Topic Coverage (KTC): whether the headline reflects the main topic of the body
+  (not a minor detail).
+
+Compute:
+Claim Support Ratio (CSR) = SHC / max(HC, 1)
+
+Interpretation:
+- Higher CSR + high KTC → strong headline-body relation.
+- Lower CSR or low KTC → weak relation.
+
+Common mismatch patterns to detect:
+- Topic switch (headline topic differs from body topic)
+- Exaggeration (headline intensifies certainty/severity beyond body evidence)
+- Missing key claim (headline asserts something the body does not establish)
+
+
+OBJECTIVE 2 — Conservative Mismatch Minimization (CMM)
+Minimize: False mismatch judgments due to normal summarization differences.
+
+Rules:
+- Paraphrase is allowed: do not penalize for rewording if meaning matches.
+- Headlines are naturally compressed: do not penalize missing minor details.
+- If the headline is broadly accurate but incomplete → moderate score, not low.
+- Only penalize heavily when the headline is misleading, unsupported, or off-topic.
+- Use ONLY information present in the headline and body.
+- Never infer missing context from world knowledge.
+
+
+FRACTAL REASONING PHASES (Internal)
+
+LAYER 1 — LOCAL SIGNAL TAGGING (Micro-Level Computation)
+Decompose the headline into 1–3 concrete claims (who/what/happened).
+Tag each claim as supported, partially supported, or unsupported using explicit body evidence (entities, events, attribution, numbers).
+
+LAYER 2 — LOCAL ERROR MINIMIZATION
+Correct for benign mismatch:
+
+paraphrase vs exact match
+
+headline compression (omitted minor detail)
+
+synonymous entities/titles
+Only mark unsupported if the body truly lacks or contradicts the claim.
+
+LAYER 3 — APERTURE EXPANSION (Document-Level Context Integration)
+Identify the body’s central theme (main point).
+Check if the headline reflects that theme or a minor angle.
+Also check if support appears later in the article.
+
+LAYER 4 — FRACTAL CONSISTENCY CHECK (Cross-Factor Propagation Guard)
+Enforce:
+
+Clickbait/sensational phrasing may reduce HBR only if it changes the factual claim (promise > delivery), not merely tone.
+
+Political framing does not imply poor HBR unless the headline claim is unsupported.
+Keep HBR focused on claim alignment, not sentiment/toxicity.
+
+LAYER 5 — INTER-AGENT REFLECTIVE CHECK
+Simulate two internal evaluators:
+
+Strict Summarizer: “Does the headline accurately summarize the body’s main claim(s)?”
+
+Reader Expectation Auditor: “Would a reasonable reader feel misled after reading the body?”
+If disagreement exists, choose the more conservative (higher) score unless clear mismatch exists.
+
+LAYER 6 — TEMPORAL RE-GROUNDING
+Re-scan the full body to ensure late evidence isn’t missed.
+If later paragraphs support a headline claim, revise support status and final score upward.
+
+FINAL CONSTRAINT:
+Score should reflect overall representativeness, not word overlap alone.
+"""
 
 def get_hbr_prompt():
     prompt = (
         "Analyze the relationship between the headline and the body content.\n\n"
         "Use the Fractal Chain-of-Thought protocol below:\n"
-        f"{FCOT_DIR_CIM_PROTOCOL}\n\n"
+        f"{HBR_FCOT}\n\n"
         "STEPS:\n"
         "1. Call the `headline_body_relation_predictive_score` tool with the headline and body to get the statistical model's prediction.\n"
         "2. Perform your own analysis of the relationship using the RUBRIC below.\n"
@@ -212,7 +291,6 @@ def get_political_prompt():
     prompt = (
         "Identify the political affiliation of the provided text.\n\n"
         "Use the Fractal Chain-of-Thought protocol below:\n"
-        "DIR is optional here; prioritize Conservative Inference Minimization (CIM).\n"
         f"{FCOT_DIR_CIM_PROTOCOL}\n\n"
         "STEPS:\n"
         "1. Call the `political_affiliation_predictive_score` tool to get the statistical model's prediction.\n"
@@ -260,13 +338,102 @@ Classify the overall sentiment.
 - Neutral: Factual, dispassionate, or objective tone.
 """
 
+SENTIMENT_FCOT = """
+You are a Sentiment Polarity Classification Agent implementing dual-objective optimization.
+
+DUAL OBJECTIVE FUNCTIONS
+
+OBJECTIVE 1 — Evaluative Polarity Index (EPI)
+Maximize: Accurate detection of overall emotional polarity in the text.
+
+Definitions:
+Identify explicit evaluative language in the text, including:
+- Positive descriptors (e.g., successful, optimistic, beneficial, effective)
+- Negative descriptors (e.g., failed, criticized, harmful, disappointing)
+
+Count:
+Positive Terms (PT)
+Negative Terms (NT)
+
+Compute:
+EPI = PT − NT
+
+Interpretation:
+If EPI > 0 → Positive
+If EPI < 0 → Negative
+If EPI ≈ 0 → Neutral
+
+Only count explicit evaluative wording.
+Do NOT interpret factual events (e.g., “the hurricane caused damage”) as emotional tone unless evaluative framing is present.
+
+
+OBJECTIVE 2 — Contextual Sentiment Stabilization (CSS)
+Minimize: Misclassifying factual negativity or criticism as emotional polarity.
+
+Rules:
+- Reporting on negative events is not automatically Negative sentiment.
+- Quoted opinions must not override the author’s overall tone.
+- Balanced coverage with mixed language should default to Neutral.
+- Use ONLY language present in the text.
+- Never infer author intent beyond explicit wording.
+- If polarity is ambiguous or evenly balanced → classify as Neutral.
+
+
+FRACTAL REASONING PHASES (Internal)
+
+LAYER 1 — LOCAL SIGNAL TAGGING (Micro-Level Computation)
+Tag each sentence as: Positive evaluative, Negative evaluative, or Neutral factual based only on explicit evaluative language (praise/blame, optimism/pessimism).
+
+LAYER 2 — LOCAL ERROR MINIMIZATION
+Correct for confounds:
+
+Negative events described factually (not evaluative)
+
+Quoted opinions vs author narrative voice
+
+Technical/clinical language that sounds negative but is neutral
+Recompute the balance of positive/negative evaluative cues after correction.
+
+LAYER 3 — APERTURE EXPANSION (Document-Level Context Integration)
+Assess sentiment over the full document:
+
+Does tone shift (e.g., neutral reporting → editorializing)?
+
+Are evaluative cues concentrated in one section or consistent throughout?
+Choose label based on dominant overall tone, not isolated sentences.
+
+LAYER 4 — FRACTAL CONSISTENCY CHECK (Cross-Factor Separation)
+Enforce separation rules:
+
+Toxicity ≠ sentiment (hostility doesn’t automatically define polarity).
+
+Sensationalism ≠ sentiment (hype can be neutral/negative/positive).
+
+Political stance does not determine sentiment label.
+If sentiment conclusion depended on these, revise using only evaluative tone.
+
+LAYER 5 — INTER-AGENT REFLECTIVE CHECK
+Simulate two internal evaluators:
+
+Polarity Counter: “Which side has more explicit evaluative language overall?”
+
+Neutral Editor: “Would a neutral reader call this overall positive/negative, or just factual?”
+If disagreement exists, default conservatively to Neutral unless polarity is clear.
+
+LAYER 6 — TEMPORAL RE-GROUNDING
+Re-check the ending and any late paragraphs for tone changes (e.g., concluding judgment, call-to-action, moral framing).
+If later text changes the dominant tone, revise the final label.
+
+FINAL CONSTRAINT:
+Do not rely on topic domain knowledge.
+Classify sentiment based only on textual tone.
+"""
 
 def get_sentiment_prompt():
     prompt = (
         "Analyze the sentiment of the text.\n\n"
         "Use the Fractal Chain-of-Thought protocol below:\n"
-        "DIR is optional here; prioritize Conservative Inference Minimization (CIM).\n"
-        f"{FCOT_DIR_CIM_PROTOCOL}\n\n"
+        f"{SENTIMENT_FCOT}\n\n"
         "STEPS:\n"
         "1. Call the `sentiment_predictive_score` tool to get the statistical model's prediction.\n"
         "2. Perform your own analysis of the text using the RUBRIC below.\n"
@@ -289,13 +456,120 @@ Classify the toxicity level of the text.
 - Super_Toxic: Hate speech, threats, or extreme dehumanization.
 """
 
+TOXICITY_FCOT = """
+You are a Hostility Severity Detection Agent implementing dual-objective optimization.
+
+DUAL OBJECTIVE FUNCTIONS
+
+OBJECTIVE 1 — Explicit Hostility Detection (EHD)
+Maximize: Accurate detection of explicit hostile language.
+
+Definitions:
+Identify whether the text contains:
+- Direct insults toward an individual or group
+- Profanity used to demean
+- Dehumanizing language
+- Aggressive hostility
+- Threats or hate speech
+
+Severity hierarchy (use highest detected level):
+
+Level 0: No hostility detected.
+Level 1: Mild dismissiveness or sarcastic belittling.
+Level 2: Direct insult or derogatory language.
+Level 3: Aggressive hostility or dehumanization.
+Level 4: Explicit threats or hate speech.
+
+Mapping:
+Level 0 → Friendly
+Level 1 → Neutral
+Level 2 → Rude
+Level 3 → Toxic
+Level 4 → Super_Toxic
+
+
+OBJECTIVE 2 — Contextual Filtering Constraint (CFC)
+Minimize: False positives caused by contextual misinterpretation.
+
+Rules:
+- Quoted toxic speech is NOT toxic unless endorsed by the author.
+- Reporting on hateful statements is not the same as producing them.
+- Strong criticism is not automatically toxic.
+- Negative sentiment alone does NOT imply toxicity.
+- Use ONLY the explicit wording in the text.
+- Never infer hostility beyond what is directly stated.
+
+
+FRACTAL REASONING PHASES (Internal)
+
+LAYER 1 — LOCAL SIGNAL TAGGING (Micro-Level Computation)
+Scan each sentence and tag explicit toxicity cues as one of:
+
+Insult / Derogatory term
+
+Profanity used to demean
+
+Dehumanization
+
+Threat / incitement / hate speech
+Also tag whether each cue targets a person/group or is general.
+
+LAYER 2 — LOCAL ERROR MINIMIZATION
+Correct for common false positives:
+
+Quoted speech vs author voice
+
+Reporting/description of toxic language vs endorsing it
+
+Sarcasm without explicit insult
+
+Strong criticism that is not abusive
+Retain only cues that remain valid after correction.
+
+LAYER 3 — APERTURE EXPANSION (Document-Level Context Integration)
+Use broader context to interpret cues:
+
+Is the cue repeated or central to the message, or incidental?
+
+Does surrounding text condemn, distance, or endorse the cue?
+
+Does toxicity intensify across the text or remain isolated?
+Update provisional severity if context changes interpretation.
+
+LAYER 4 — FRACTAL CONSISTENCY CHECK (Cross-Factor Propagation Guard)
+Enforce:
+
+Negative sentiment ≠ toxicity unless explicit abusive cues exist.
+
+Political framing ≠ toxicity unless explicit abusive cues exist.
+
+Emotional language only increases toxicity if it includes hostile targeting.
+If inconsistency exists, downgrade toxicity accordingly.
+
+LAYER 5 — INTER-AGENT REFLECTIVE CHECK
+Simulate two internal evaluators:
+
+Strict Literalist: “Do we have explicit hostile wording that meets the label definition?”
+
+Contextual Auditor: “Is this quoted/reporting/condemned rather than authored hostility?”
+If disagreement exists, choose the more conservative (lower) toxicity label.
+
+LAYER 6 — TEMPORAL RE-GROUNDING
+Re-scan the full text from start to end to catch late clarifications:
+
+Later lines may reveal quotes, attribution, condemnation, or escalation.
+Revise the final label if later context changes authorship/endorsement or severity.
+
+FINAL CONSTRAINT:
+If no explicit hostile language is detected, classify as Friendly or Neutral.
+"""
+
 
 def get_toxicity_prompt():
     prompt = (
         "Analyze the toxicity of the text.\n\n"
         "Use the Fractal Chain-of-Thought protocol below:\n"
-        "DIR is optional here; prioritize Conservative Inference Minimization (CIM) and explicit wording.\n"
-        f"{FCOT_DIR_CIM_PROTOCOL}\n\n"
+        f"{TOXICITY_FCOT}\n\n"
         "STEPS:\n"
         "1. Call the `toxicity_predictive_score` tool to get the statistical model's prediction.\n"
         "2. Perform your own analysis of the text using the RUBRIC below.\n"
