@@ -1,41 +1,191 @@
 # capstone_factuality_factors
 
-## Installation Guide
+Factuality Factor Predictor: models and agents for analyzing news headlines and body text (clickbait, sensationalism, political affiliation, sentiment, toxicity, headline–body relation). Includes a Streamlit demo, Google ADK multi-agent pipeline, and an evaluation harness.
 
-Follow these steps to set up your development environment and initialize the models required for the Factuality Factor Predictor project.
+---
 
-### 1. Create a Virtual Environment
+## Documentation checklist
 
-This project was developed and tested using built-in [virtual environment](https://docs.python.org/3/library/venv.html) it is recommended to use a venv aswell
+- **Installation instructions** — see [Installation](#installation-instructions) below.
+- **Dependency list (with versions)** — see [Dependencies](#dependency-list-with-versions) and `requirements.txt`.
+- **Environment setup instructions** — see [Environment setup](#environment-setup-instructions).
+- **Dataset access instructions** — see [Dataset and data access](#dataset-and-data-access).
+- **Exact commands to run experiments** — see [Commands to run experiments](#exact-commands-to-run-experiments).
+- **Expected outputs** — see [Expected outputs](#expected-outputs).
+- **Directory structure** — see [Directory structure](#directory-structure).
 
-So create a venv such as:
+---
 
-- **Unix/macOS:**
-  ```bash
-  python3 -m venv [name_of_venv]
-  source [name_of_venv]/bin/activate # To activate the venv
-  ```
-- **Windows:**
-  ```bash
-  python -m venv [name_of_venv]
-  [name_of_venv]\Scripts\activate # To activate the venv
-  ```
+## Installation instructions
 
-### 2. Install Package Dependencies
+1. **Create a virtual environment** (recommended). The project was developed and tested with Python’s built-in [venv](https://docs.python.org/3/library/venv.html).
 
-Ensure your virtual environment is activated, then install all required packages using the requirements file:
+   - **Unix/macOS:**
+     ```bash
+     python3 -m venv .venv
+     source .venv/bin/activate
+     ```
+   - **Windows:**
+     ```bash
+     python -m venv .venv
+     .venv\Scripts\activate
+     ```
+
+2. **Install dependencies** (see [Dependency list](#dependency-list-with-versions)):
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Configure environment variables** — see [Environment setup](#environment-setup-instructions).
+
+---
+
+## Dependency list (with versions)
+
+All dependencies are pinned in **`requirements.txt`** at the project root. Install with:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure Environment Variables
+Key packages (versions as in `requirements.txt`): `google-adk` (ADK CLI and agent runtime), `streamlit`, `pandas`, `python-dotenv`, `openrouter`, `tqdm`, and ML/API-related libraries used by the models and evaluator. The file may include environment-specific or editable installs; use the same Python version (e.g. 3.12) for reproducibility.
 
-Some functionality (such as LLM-based features or embeddings) requires API keys and environment variables. Create a `.env` file in your project root and add the necessary keys. For example:
+---
+
+## Environment setup instructions
+
+- **Project root:** Create a `.env` file in the **project root** with at least:
+  ```bash
+  OPENROUTER_API_KEY=your_openrouter_key
+  AI_STUDIO_API_KEY=your_ai_studio_key
+  ```
+  Used by the Streamlit demo (`demo.py`) and the CLI evaluator (`run_eval_cli.py`).
+
+- **Factuality agents:** For `adk run` / `adk web` / agent eval, create a **`.env` inside `FactualityAgents/`** with:
+  ```bash
+  OPENROUTER_API_KEY=your_openrouter_key
+  AI_STUDIO_API_KEY=your_ai_studio_key
+  GEMINI_API_KEY=your_gemini_key
+  ```
+  Do not commit `.env` files; they are listed in `.gitignore`.
+
+---
+
+## Dataset and data access
+
+Evaluation and demos use ground-truth CSV files in **`evals/`**:
+
+- **`evals/ground_truth.csv`** — used by the Streamlit eval UI and by `run_eval_cli.py`.
+- **`evals/REAL_GROUND_TRUTH_WITH_TOXICITY.csv`** — used by `run_agent_eval.py` for the full agent pipeline eval.
+
+**Clickbait:**  
+The Clickbait model is trained using data from [this Kaggle dataset](https://www.kaggle.com/datasets/amananandrai/clickbait-dataset).
+
+---
+
+## Exact commands to run experiments
+
+Run these from the **project root** with your venv activated.
+
+**Streamlit demo (frontend):**
+```bash
+streamlit run demo.py
+```
+
+**Agent demos (Google ADK):**
+```bash
+# Interactive CLI — paste headline/body, get factuality report
+adk run FactualityAgents
+
+# Web UI (development only) — open http://localhost:8000, select FactualityAgents
+adk web --port 8000
+
+# API server (for programmatic access)
+adk api_server
+```
+
+**Evaluations:**
+```bash
+# Eval UI: upload CSV, pick model, run eval, see metrics
+streamlit run evals/app.py
+
+# CLI: single-LLM eval on evals/ground_truth.csv (uses OPENROUTER_API_KEY from root .env)
+python run_eval_cli.py
+
+# Agent orchestrator eval on evals/REAL_GROUND_TRUTH_WITH_TOXICITY.csv
+python run_agent_eval.py          # 1 article (sanity check)
+python run_agent_eval.py 10       # first 10 articles
+python run_agent_eval.py all      # full dataset
+```
+
+---
+
+## Expected outputs
+
+- **`streamlit run demo.py`** — Browser opens at `http://localhost:8501`. You can enter a headline and optional body; the UI runs each factor model and shows scores (e.g. clickbait probability, sentiment, toxicity). You can add example screenshots here later.
+
+- **`adk run FactualityAgents`** — Terminal prompt for input. After you submit a headline and body, the orchestrator returns a consolidated JSON-style factuality report (scores/labels per factor).
+
+- **`adk web --port 8000`** — Browser at `http://localhost:8000` with an agent dropdown; choose FactualityAgents and chat to get the same style of report.
+
+- **`streamlit run evals/app.py`** — Eval dashboard: upload CSV, configure model/prompts, run evaluation; results include per-factor accuracy, confusion matrices, and logs. You can add example screenshots here later.
+
+- **`python run_eval_cli.py`** — Terminal output: “EVALUATION RESULTS” block with total articles, successful/errors, overall accuracy, per-factor accuracy and MAE, and mean MAE / mean accuracy at the end.
+
+- **`python run_agent_eval.py [n|all]`** — Progress bar over articles, then “AGENT ORCHESTRATOR EVALUATION RESULTS” with overall accuracy and per-factor accuracy/MAE.
+
+---
+
+## Directory structure
 
 ```
-OPENROUTER_API_KEY=your_api_key_here
-AI_STUDIO_API_KEY=your_other_api_key
+capstone_factuality_factors/
+├── demo.py                 # Streamlit frontend for factor prediction
+├── run_eval_cli.py         # CLI single-LLM evaluation
+├── run_agent_eval.py       # Agent orchestrator evaluation script
+├── requirements.txt        # Pinned Python dependencies
+├── .env                    # API keys (root; not committed)
+│
+├── evals/                  # Evaluation harness
+│   ├── app.py              # Streamlit eval UI
+│   ├── evaluator.py        # LLM evaluation logic
+│   ├── logger.py           # Run and result logging
+│   ├── utils.py            # Metrics, CSV validation, factor names
+│   ├── validate_csv.py     # Ground truth CSV validation
+│   ├── ground_truth.csv    # Default ground truth (eval UI + CLI)
+│   ├── REAL_GROUND_TRUTH_WITH_TOXICITY.csv  # Used by run_agent_eval.py
+│   ├── logs/               # evaluation_logs_*.csv, master_log.csv, metadata/
+│   └── README.md           # Eval harness usage and CSV format
+│
+├── FactualityAgents/       # Google ADK agent package
+│   ├── agent.py            # root_agent and sub-agents
+│   ├── prompts.py          # System prompts and rubrics
+│   ├── tools.py            # Tools that call trained models
+│   └── .env                # API keys for agents (not committed)
+│
+├── models/                 # Trained factor predictors (FactualityFactor subclasses)
+│   ├── factuality_factor.py
+│   ├── clickbait/
+│   ├── headline_body_relation/
+│   ├── political_affiliation/
+│   ├── sensationalism/
+│   ├── sentiment_analysis/
+│   └── toxicity/
+│
+├── model_training_scripts/  # Notebooks/scripts used to train the models
+│   ├── clickbait/
+│   ├── political_affiliation/
+│   ├── sensationalism/
+│   ├── sentiment_analysis/
+│   └── toxicity/
+│
+├── generative_models/      # LLM client (e.g. OpenRouter)
+│   └── LLM.py
+│
+└── tests/                  # Test suite
 ```
+
+---
 
 ## Running the Frontend Application
 
@@ -107,16 +257,7 @@ adk api_server
 
 This starts a server you can send HTTP requests to programmatically.
 
-### Project Structure (Agent Package)
-
-```
-FactualityAgents/
-  __init__.py      # Imports the agent module
-  agent.py         # Defines root_agent (orchestrator) and all sub-agents
-  prompts.py       # System prompts and rubrics for each sub-agent
-  tools.py         # Tool functions that call the trained predictive models
-  .env             # API keys (not committed to version control)
-```
+For the agent package layout, see [Directory structure](#directory-structure) (FactualityAgents/).
 
 > **Learn more:** For full documentation on ADK commands, deployment, and advanced configuration, see the [official ADK documentation](https://google.github.io/adk-docs/).
 
