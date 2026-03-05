@@ -108,6 +108,7 @@ root_agent = LlmAgent(
         AgentTool(clickbait_agent),
         AgentTool(headline_body_agent),
         AgentTool(political_affiliation_agent),
+        AgentTool(sensationalism_agent),
         AgentTool(sentiment_agent),
         AgentTool(toxicity_agent),
     ],

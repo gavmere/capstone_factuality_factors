@@ -15,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
 from tqdm import tqdm
 
-from generative_models.LLM import generate
+from generative_models.llm import generate
 from evals.utils import (
     parse_llm_response,
     compare_numeric_values,

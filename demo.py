@@ -3,7 +3,7 @@ import json
 import os
 import threading
 from dotenv import load_dotenv
-from generative_models.LLM import generate
+from generative_models.llm import generate
 from models.clickbait.clickbait import Clickbait
 from models.headline_body_relation.headline_body_relation import HeadlineBodyRelation
 from models.political_affiliation.political_affiliation import PoliticalAffiliation

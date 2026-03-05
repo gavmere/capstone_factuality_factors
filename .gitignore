@@ -1,9 +1,11 @@
 # Python
 __pycache__/
 *.pyc
+*.db
 
 # Jupyter
 .ipynb_checkpoints/
+demo.ipynb
 
 # Model artifacts & caches
 *.pkl
@@ -19,6 +21,11 @@ model_training_scripts/**/embeddings_cache/**
 .env.*
 venv/
 .venv/
+.adk/
 
 # OS
 .DS_Store
+
+# Generated eval outputs / accidental exports
+evals/logs/
+evals/Untitled spreadsheet*.csv

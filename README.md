@@ -48,7 +48,7 @@ All dependencies are pinned in **`requirements.txt`** at the project root. Insta
 pip install -r requirements.txt
 ```
 
-Key packages (versions as in `requirements.txt`): `google-adk` (ADK CLI and agent runtime), `streamlit`, `pandas`, `python-dotenv`, `openrouter`, `tqdm`, and ML/API-related libraries used by the models and evaluator. The file may include environment-specific or editable installs; use the same Python version (e.g. 3.12) for reproducibility.
+Key packages (versions as in `requirements.txt`): `google-adk` (ADK CLI and agent runtime), `streamlit`, `pandas`, `python-dotenv`, `openrouter`, `tqdm`, and ML/API-related libraries used by the models and evaluator.
 
 ---
 
@@ -73,10 +73,10 @@ Key packages (versions as in `requirements.txt`): `google-adk` (ADK CLI and agen
 
 ## Dataset and data access
 
-Evaluation and demos use ground-truth CSV files in **`evals/`**:
+Evaluation and demos use ground-truth CSV files in **`data/`**:
 
-- **`evals/ground_truth.csv`** — used by the Streamlit eval UI and by `run_eval_cli.py`.
-- **`evals/REAL_GROUND_TRUTH_WITH_TOXICITY.csv`** — used by `run_agent_eval.py` for the full agent pipeline eval.
+- **`data/ground_truth.csv`** — used by the Streamlit eval UI and by `run_eval_cli.py`.
+- **`data/ground_truth_with_toxicity.csv`** — used by `run_agent_eval.py` for the full agent pipeline eval.
 
 **Clickbait:**  
 The Clickbait model is trained using data from [this Kaggle dataset](https://www.kaggle.com/datasets/amananandrai/clickbait-dataset).
@@ -109,10 +109,10 @@ adk api_server
 # Eval UI: upload CSV, pick model, run eval, see metrics
 streamlit run evals/app.py
 
-# CLI: single-LLM eval on evals/ground_truth.csv (uses OPENROUTER_API_KEY from root .env)
+# CLI: single-LLM eval on data/ground_truth.csv (uses OPENROUTER_API_KEY from root .env)
 python run_eval_cli.py
 
-# Agent orchestrator eval on evals/REAL_GROUND_TRUTH_WITH_TOXICITY.csv
+# Agent orchestrator eval on data/ground_truth_with_toxicity.csv
 python run_agent_eval.py          # 1 article (sanity check)
 python run_agent_eval.py 10       # first 10 articles
 python run_agent_eval.py all      # full dataset
@@ -152,10 +152,13 @@ capstone_factuality_factors/
 │   ├── logger.py           # Run and result logging
 │   ├── utils.py            # Metrics, CSV validation, factor names
 │   ├── validate_csv.py     # Ground truth CSV validation
-│   ├── ground_truth.csv    # Default ground truth (eval UI + CLI)
-│   ├── REAL_GROUND_TRUTH_WITH_TOXICITY.csv  # Used by run_agent_eval.py
 │   ├── logs/               # evaluation_logs_*.csv, master_log.csv, metadata/
 │   └── README.md           # Eval harness usage and CSV format
+│
+├── data/                   # Evaluation datasets
+│   ├── ground_truth.csv
+│   ├── ground_truth_with_toxicity.csv
+│   └── ground_truth_original.csv
 │
 ├── FactualityAgents/       # Google ADK agent package
 │   ├── agent.py            # root_agent and sub-agents
@@ -180,7 +183,7 @@ capstone_factuality_factors/
 │   └── toxicity/
 │
 ├── generative_models/      # LLM client (e.g. OpenRouter)
-│   └── LLM.py
+│   └── llm.py
 │
 └── tests/                  # Test suite
 ```
@@ -289,7 +292,7 @@ Run a quick headless evaluation from the command line using `run_eval_cli.py`:
 python run_eval_cli.py
 ```
 
-This evaluates the ground truth CSV (`evals/ground_truth.csv`) against a single LLM (defaults to `google/gemini-3-flash-preview` via OpenRouter) and prints per-factor accuracy and MAE to the terminal. Edit the variables at the top of the script to change the model, provider, or CSV path.
+This evaluates the ground truth CSV (`data/ground_truth.csv`) against a single LLM (defaults to `google/gemini-3-flash-preview` via OpenRouter) and prints per-factor accuracy and MAE to the terminal. Edit the variables at the top of the script to change the model, provider, or CSV path.
 
 ### Option 3: Agent Orchestrator Evaluation
 
