@@ -41,7 +41,7 @@ class Sensationalism(FactualityFactor):
                 "Please export it before using the Sensationalism factor."
             )
 
-        self.gemini_model = "models/text-embedding-004"
+        self.gemini_model = "models/gemini-embedding-001"
         self.gemini_client = genai.Client(api_key=api_key)
 
         # --- Load trained classifier ---

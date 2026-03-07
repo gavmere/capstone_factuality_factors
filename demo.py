@@ -110,7 +110,7 @@ FACTORS = {
         "llm_key": "Party Affliation",
     },
     "Sensationalism": {
-        "enabled": False,
+        "enabled": True,
         "uses_headline": True,
         "llm_key": "Sensationalism",
     },
