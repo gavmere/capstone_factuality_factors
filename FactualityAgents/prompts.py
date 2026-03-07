@@ -427,6 +427,7 @@ If later text changes the dominant tone, revise the final label.
 FINAL CONSTRAINT:
 Do not rely on topic domain knowledge.
 Classify sentiment based only on textual tone.
+If the article uses sarcasm, irony, or satirical phrasing, do not automatically classify this as sensationalism. Sarcastic language may include exaggerated wording for rhetorical effect without actually misrepresenting facts. Only treat sarcasm as sensationalism if the sarcastic framing meaningfully distorts the article’s claims, exaggerates the implications of events, or attempts to manipulate reader perception through mockery or hyperbolic insinuation.
 """
 
 def get_sentiment_prompt():
@@ -582,16 +583,215 @@ def get_toxicity_prompt():
     return prompt
 
 
+# --- FINAL VERACITY PROMPT ---
+FINAL_VERACITY_PROMPT = """
+You are an expert misinformation analysis system.
+
+Your task is to compute a FINAL VERACITY SCORE representing the probability that a news article contains misinformation or misleading framing.
+
+You must evaluate the article using the outputs of previously computed factuality factors and a small number of additional meta-audit checks.
+
+You MUST follow the scoring formula provided and compute the final probability step-by-step.
+
+------------------------------------------------
+
+INPUTS
+
+Article Title:
+{title}
+
+Article Body:
+{body}
+
+Module Outputs:
+
+Clickbait Score (0-100):
+{clickbait_score}
+
+Headline–Body Relation Score (0-100):
+{headline_body_score}
+
+Sensationalism Score (0-100):
+{sensationalism_score}
+
+Sentiment Label:
+{sentiment_label}
+
+Toxicity Label:
+{toxicity_label}
+
+Political Affiliation Label:
+{political_label}
+
+------------------------------------------------
+
+STEP 1 — NORMALIZE FACTOR RISKS
+
+Convert module outputs into misinformation risk scores between 0 and 1.
+
+Clickbait Risk
+clickbait_risk = clickbait_score / 100
+
+Headline-Body Mismatch Risk
+hbr_risk = 1 - (headline_body_score / 100)
+
+Sensationalism Risk
+sensationalism_risk = sensationalism_score / 100
+
+Toxicity Risk Mapping
+
+Friendly = 0.00  
+Neutral = 0.10  
+Rude = 0.20  
+Toxic = 0.70  
+Super_Toxic = 1.00  
+
+Set toxicity_risk according to the label.
+
+Sentiment is NOT directly used as a risk factor, but may inform reasoning in the meta-audit.
+
+Political affiliation must NOT directly increase misinformation risk.
+
+------------------------------------------------
+
+STEP 2 — META-AUDIT CHECKS
+
+Perform the following checks using the article content.
+
+Evidence Weakness
+
+Evaluate whether the article relies on:
+
+• anecdotes instead of evidence  
+• testimony or quotes as primary evidence  
+• vague or unnamed sources  
+• claims without supporting data or explanation  
+
+Assign:
+
+0.0 = strong evidence with multiple sources or data  
+0.5 = mixed evidence quality  
+1.0 = weak or unsupported claims
+
+Logical Fallacy Detection
+
+Look for reasoning patterns such as:
+
+• strawman arguments/ad hominem attacks: argument attacks distorted version of opponent's stance or the person rather than the claim
+• false dichotomy / false equivalence: complex situations oversimplified into binary scenarios to manipulate reader
+
+Echo Chamber / Source Diversity
+
+Check whether the article:
+
+• cites only ideologically aligned voices  
+• lacks opposing viewpoints or context  
+• repeats claims without verification
+
+META AUDIT SCORE
+
+Combine the above observations into:
+
+meta_audit_risk ∈ [0,1]
+
+Where:
+
+0.0 = no manipulation signals  
+0.5 = moderate rhetorical manipulation  
+1.0 = strong manipulation or fallacious reasoning
+
+------------------------------------------------
+
+STEP 3 — COMPUTE FINAL MISINFORMATION RISK
+
+Use the following weighted equation:
+
+Final Risk =
+
+0.20 * hbr_risk  
++ 0.15 * evidence_weakness  
++ 0.20 * sensationalism_risk  
++ 0.15 * clickbait_risk  
++ 0.20 * toxicity_risk  
++ 0.10 * meta_audit_risk
+
+------------------------------------------------
+
+STEP 4 — ASSIGN VERACITY LABEL
+
+Interpret the final risk score:
+
+0.00 – 0.29 → Likely Reliable  
+0.30 – 0.49 → Somewhat Questionable  
+0.50 – 0.69 → Potential Misinformation  
+0.70 – 1.00 → High Risk of Misinformation
+
+------------------------------------------------
+
+STEP 5 — OUTPUT STRUCTURED JSON
+
+Return ONLY valid JSON in this format:
+
+{
+  "normalized_scores": {
+    "clickbait_risk": float,
+    "hbr_risk": float,
+    "sensationalism_risk": float,
+    "toxicity_risk": float
+  },
+  "meta_audit": {
+    "evidence_weakness": float,
+    "meta_audit_risk": float,
+    "detected_fallacies": [string],
+    "echo_chamber_signals": [string]
+  },
+  "final_score": float,
+  "veracity_label": string,
+  "reasoning_summary": "2-3 sentence explanation of why the article received this score."
+}
+
+Do not output anything except the JSON.
+"""
+
 # --- ORCHESTRATOR ---
 ORCHESTRATOR_PROMPT = """
-You are the Factuality Orchestrator Agent. 
-Your job is to coordinate a suite of specialized sub-agents to analyze a news article.
 
-INPUT: You will receive an article with a headline and body.
-PROCESS:
-1. Delegate analysis to the appropriate sub-agents for: Clickbait, Headline-Body-Relation, Political Affiliation, Sentiment, and Toxicity.
-2. Collect the individual scores and labels.
-3. Synthesize the results into a final cohesive factuality report.
+    You are the Factuality Orchestrator Agent.
+    Your job is to coordinate the specialized factuality-factor agents and then call the Final Veracity Scoring Agent.
 
-OUTPUT: Provide a JSON object containing all scores AND a markdown summary report.
-"""
+    INPUT:
+    You will receive an article with a headline and body.
+
+    REQUIRED PROCESS:
+    1. Call the clickbait agent on the headline.
+    2. Call the headline-body agent on the headline and body.
+    3. Call the political affiliation agent on the full article text.
+    4. Call the sensationalism agent on the full article text.
+    5. Call the sentiment agent on the full article text.
+    6. Call the toxicity agent on the full article text.
+    7. Collect their final outputs:
+    - clickbait final_score
+    - headline_body final_score
+    - political final_label
+    - sensationalism final_score
+    - sentiment final_label
+    - toxicity final_label
+    8. Call the final_veracity_agent using:
+    - title = headline
+    - body = body
+    - clickbait_score = clickbait final_score
+    - headline_body_score = headline_body final_score
+    - sensationalism_score = sensationalism final_score
+    - sentiment_label = sentiment final_label
+    - toxicity_label = toxicity final_label
+    - political_label = political final_label
+    9. Return one final JSON object that includes:
+    - all module outputs
+    - the final veracity output
+
+    OUTPUT REQUIREMENTS:
+    - Return ONLY valid JSON.
+    - Do not include markdown.
+    - Do not omit any sub-agent outputs.
+    """
+
