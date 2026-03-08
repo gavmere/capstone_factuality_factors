@@ -80,12 +80,10 @@ Evaluation and demos use ground-truth CSV files in **`data/`**:
 ### Training Datasets
 
 **Clickbait:**  
-The Clickbait model is trained using data from the following Kaggle dataset:  
-https://www.kaggle.com/datasets/amananandrai/clickbait-dataset
+The Clickbait model is trained using data from [this Kaggle dataset](https://www.kaggle.com/datasets/amananandrai/clickbait-dataset).
 
 **Sensationalism:**  
-The Sensationalism model is trained using the GoEmotions dataset from Kaggle:  
-https://www.kaggle.com/datasets/debarshichanda/goemotions/data
+The Sensationalism model is trained using this [GoEmotions dataset](https://www.kaggle.com/datasets/amananandrai/clickbait-dataset) from Kaggle.
 
 **Political Affiliation:**  
 The Political Affiliation model is trained using **`data/full_news_data.jsonl`**, a dataset of scraped news articles collected from various online news sources.
