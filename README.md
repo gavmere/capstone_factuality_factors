@@ -71,15 +71,24 @@ Key packages (versions as in `requirements.txt`): `google-adk` (ADK CLI and agen
 
 ---
 
-## Dataset and data access
+## Dataset and Data Access
 
 Evaluation and demos use ground-truth CSV files in **`data/`**:
 
-- **`data/ground_truth.csv`** — used by the Streamlit eval UI and by `run_eval_cli.py`.
-- **`data/ground_truth_with_toxicity.csv`** — used by `run_agent_eval.py` for the full agent pipeline eval.
+- **`data/ground_truth.csv`** — used by the Streamlit evaluation UI, `run_eval_cli.py`, and `run_agent_eval.py` for the full agent pipeline evaluation.
+
+### Training Datasets
 
 **Clickbait:**  
-The Clickbait model is trained using data from [this Kaggle dataset](https://www.kaggle.com/datasets/amananandrai/clickbait-dataset).
+The Clickbait model is trained using data from the following Kaggle dataset:  
+https://www.kaggle.com/datasets/amananandrai/clickbait-dataset
+
+**Sensationalism:**  
+The Sensationalism model is trained using the GoEmotions dataset from Kaggle:  
+https://www.kaggle.com/datasets/debarshichanda/goemotions/data
+
+**Political Affiliation:**  
+The Political Affiliation model is trained using **`data/full_news_data.jsonl`**, a dataset of scraped news articles collected from various online news sources.
 
 ---
 
