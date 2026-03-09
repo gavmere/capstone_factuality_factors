@@ -13,6 +13,7 @@ from .tools import (
     sentiment_predictive_score,
     toxicity_predictive_score,
     combine_scores,
+    final_veracity_scoring_agent,
 )
 from .prompts import (
     get_clickbait_prompt,
@@ -111,5 +112,6 @@ root_agent = LlmAgent(
         AgentTool(sensationalism_agent),
         AgentTool(sentiment_agent),
         AgentTool(toxicity_agent),
+        final_veracity_scoring_agent,
     ],
 )

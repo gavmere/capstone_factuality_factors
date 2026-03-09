@@ -135,7 +135,7 @@ python run_agent_eval.py all      # full dataset
 
 ## Expected outputs
 
-- **`streamlit run demo.py`** — Browser opens at `http://localhost:8501`. You can enter a headline and optional body; the UI runs each factor model and shows scores (e.g. clickbait probability, sentiment, toxicity). You can add example screenshots here later.
+- **`streamlit run demo.py`** — Browser opens at `http://localhost:8501`. This comprehensive application runs the headline and body through three independent pipelines (LLM, Statistical Models, and Agent Orchestration) simultaneously and presents a side-by-side comparison of factuality factors. It also includes a "Final Veracity Audit" step that synthesizes all outputs into a single misinformation risk score using `FINAL_VERACITY_PROMPT`.
 
 - **`adk run FactualityAgents`** — Terminal prompt for input. After you submit a headline and body, the orchestrator returns a consolidated JSON-style factuality report (scores/labels per factor).
 
@@ -153,7 +153,7 @@ python run_agent_eval.py all      # full dataset
 
 ```
 capstone_factuality_factors/
-├── demo.py                 # Streamlit frontend for factor prediction
+├── demo.py                 # Comprehensive Streamlit frontend (LLM, Statistical, & Agent pipelines)
 ├── run_eval_cli.py         # CLI single-LLM evaluation
 ├── run_agent_eval.py       # Agent orchestrator evaluation script
 ├── requirements.txt        # Pinned Python dependencies
@@ -205,7 +205,7 @@ capstone_factuality_factors/
 
 ## Running the Frontend Application
 
-To start the interactive frontend and use the Factuality Factor Predictor UI, follow these steps:
+To start the interactive frontend and use the Comprehensive Factuality App, follow these steps:
 
 1. **Ensure you are in your project directory and your virtual environment is activated.**
 2. **Launch the Streamlit app by running:**

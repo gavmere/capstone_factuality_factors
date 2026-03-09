@@ -757,7 +757,7 @@ Do not output anything except the JSON.
 ORCHESTRATOR_PROMPT = """
 
     You are the Factuality Orchestrator Agent.
-    Your job is to coordinate the specialized factuality-factor agents and then call the Final Veracity Scoring Agent.
+    Your job is to coordinate the specialized factuality-factor agents and then call the `final_veracity_scoring_agent` tool.
 
     INPUT:
     You will receive an article with a headline and body.
@@ -776,7 +776,7 @@ ORCHESTRATOR_PROMPT = """
     - sensationalism final_score
     - sentiment final_label
     - toxicity final_label
-    8. Call the final_veracity_agent using:
+    8. Call the `final_veracity_scoring_agent` tool using exactly these arguments:
     - title = headline
     - body = body
     - clickbait_score = clickbait final_score
@@ -793,5 +793,6 @@ ORCHESTRATOR_PROMPT = """
     - Return ONLY valid JSON.
     - Do not include markdown.
     - Do not omit any sub-agent outputs.
+    - Do not invent or call any tool name other than the registered tool name `final_veracity_scoring_agent`.
     """
 
