@@ -88,6 +88,12 @@ The Sensationalism model is trained using this [GoEmotions dataset](https://www.
 **Political Affiliation:**  
 The Political Affiliation model is trained using **`data/full_news_data.jsonl`**, a dataset of scraped news articles collected from various online news sources.
 
+**Sentiment Analysis:**
+The Sentiment Analysis model is based off the [VADER](https://github.com/cjhutto/vaderSentiment) (Valence Aware Dictionary and sEntiment Reasoner) model which is trained on the [vader_lexicon.txt](https://github.com/cjhutto/vaderSentiment/blob/master/vaderSentiment/vader_lexicon.txt) dataset.
+
+**Toxicity:**
+The Toxicity Model is trained from the [Jigsaw Multilingual Toxic Comment Classification](https://www.kaggle.com/c/jigsaw-multilingual-toxic-comment-classification) on Kaggle.
+
 ---
 
 ## Exact commands to run experiments
