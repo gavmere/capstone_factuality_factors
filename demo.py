@@ -299,28 +299,70 @@ def parse_agent_response(events):
     mapping = {
         "clickbait_score": "Clickbait",
         "clickbait": "Clickbait",
+        "clickbait_agent": "Clickbait",
         "headline_body_alignment": "Headline-Body-Relation",
         "headline_body_relation": "Headline-Body-Relation",
+        "headline_body_agent": "Headline-Body-Relation",
         "political_affiliation": "Political Affiliation",
+        "political_affiliation_agent": "Political Affiliation",
         "sensationalism_score": "Sensationalism",
         "sensationalism": "Sensationalism",
+        "sensationalism_agent": "Sensationalism",
         "sentiment": "Sentiment Analysis",
+        "sentiment_agent": "Sentiment Analysis",
         "toxicity": "Toxicity",
+        "toxicity_agent": "Toxicity",
     }
+
+    def extract_factor_value(value):
+        if isinstance(value, dict):
+            for sk in [
+                "final_score",
+                "final_label",
+                "score",
+                "label",
+                "generative_score",
+                "generative_label",
+                "predictive_score",
+                "predictive_label",
+            ]:
+                if sk in value:
+                    return value[sk]
+            for nested_value in value.values():
+                extracted = extract_factor_value(nested_value)
+                if extracted is not None:
+                    return extracted
+            return None
+        return value
+
     normalized = {}
     valid_factors = NUMERIC_FACTORS + CATEGORICAL_FACTORS
-    for k, v in data.items():
-        norm_key = mapping.get(k.lower(), normalize_factor_name(k))
-        if norm_key in valid_factors:
+
+    def walk(obj):
+        if not isinstance(obj, dict):
+            return
+        for k, v in obj.items():
+            norm_key = mapping.get(k.lower(), normalize_factor_name(k))
+            if norm_key in valid_factors and norm_key not in normalized:
+                extracted = extract_factor_value(v)
+                if extracted is not None:
+                    normalized[norm_key] = extracted
             if isinstance(v, dict):
-                for sk in ["final_score", "final_label", "score", "label"]:
-                    if sk in v:
-                        normalized[norm_key] = v[sk]
-                        break
-                else:
-                    normalized[norm_key] = next(iter(v.values()))
-            else:
+                walk(v)
+            elif isinstance(v, list):
+                for item in v:
+                    if isinstance(item, dict):
+                        walk(item)
+
+    walk(data)
+    
+    # Fallback: if we didn't find anything, try to just map top-level keys directly
+    if not normalized and isinstance(data, dict):
+        for k, v in data.items():
+            norm_key = mapping.get(k.lower(), normalize_factor_name(k))
+            if norm_key in valid_factors:
                 normalized[norm_key] = v
+                
     return normalized
 
 
@@ -352,7 +394,27 @@ def run_agent_prediction(headline, body):
         loop = asyncio.new_event_loop()
         events = loop.run_until_complete(_run())
         loop.close()
-        return parse_agent_response(events)
+        
+        # DEBUG: add the raw events to the result so we can see what's happening
+        parsed = parse_agent_response(events)
+        
+        # Extract the raw final text for debugging
+        final_text = ""
+        for event in reversed(events):
+            if hasattr(event, "content") and event.content:
+                if hasattr(event.content, "parts"):
+                    for part in event.content.parts:
+                        if hasattr(part, "text") and part.text:
+                            final_text = part.text
+                            break
+                if final_text:
+                    break
+            if hasattr(event, "text") and event.text:
+                final_text = event.text
+                break
+                
+        parsed["_raw_text"] = final_text
+        return parsed
     except Exception as e:
         return {"_error": str(e)}
 
@@ -717,6 +779,9 @@ if analysis_results:
             for col, (name, results) in zip(raw_cols, active):
                 with col:
                     st.markdown(f"**{name}**")
+                    if name == "Agent" and agent_results and "_raw_text" in agent_results:
+                        st.text("Raw Text from Agent:")
+                        st.code(agent_results["_raw_text"])
                     st.json(results)
 
         st.subheader("Final Veracity")
