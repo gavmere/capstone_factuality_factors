@@ -381,3 +381,9 @@ print(result)  # {'0': 0.12, '1': 0.88}
 ```
 
 Replace the import path with the factor you need (e.g., `models.sentiment_analysis.sentiment_analysis.SentimentAnalysis`). The `probability` method always returns a dictionary mapping class labels to probabilities.
+
+
+## Acknowledgements
+
+This project was developed as part of the HDSI Capstone program.
+Find additional information and related work at https://alternusvera.com
